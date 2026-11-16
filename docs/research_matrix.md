@@ -111,3 +111,16 @@ step. Until then model capability stays "ölçülemedi".
 - Every technique adopted is with our own measured evidence on this machine.
 - Long-context beyond 2048 is unmeasured here (config cap); no extrapolation
   will be presented as measurement.
+
+## Iteration 10 — MLA/latent-KV prototype (measured; NOT promoted)
+
+DeepSeek-style latent KV (arXiv:2405.04434 core idea): cache one 64-d latent
+per token per layer; K/V expanded from it per step (no absorption trick).
+Measured identically vs v0.4: decode +12.5-17.1% slower at ctx 64/512/1024;
+prefill 10-16% slower; KV bytes/token/layer 256 vs 1024 B (4x memory win).
+Correctness: 338 passed; parity vs eager verified (token-by-token and chunked
+prefill). Quality unverifiable without training. Kept as branch cand/v0.6-mla
++ versions/v0.6-candidate (frozen) + opt-in attention_type="mla" there;
+NOT merged into master; best_version stays v0.4. Honest verdict: at our
+launch-bound 9.8M scale the up-projection costs more than the KV broadcast
+saves; MLA only pays at long-context memory-bound serving (unmeasurable here).

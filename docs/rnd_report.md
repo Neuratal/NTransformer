@@ -209,3 +209,12 @@ Quality unverifiable without training (formula change). Frozen as
 Promotion would require a training-time quality result or a long-context,
 memory-bound target where the 32× state advantage dominates the latency loss.
 Iteration 10 may revisit with the WY-chunkwise parallel form + training infra.
+
+## Iteration 10 — MLA/latent-KV (v0.6-candidate; NOT promoted, branch only)
+
+Implemented: latent KV cache + expansion per step; two-slice RoPE (q new
+positions / k full range); SDPA dispatch; cached-vs-uncached parity verified.
+Measured: decode +12.5-17.1% slower at ctx 64/512/1024 (vs dense GQA);
+prefill 10-16% slower; KV bytes/token/layer 4x lower (256 vs 1024 B);
+params 9.72M vs 9.78M. NOT promoted; rejected for adoption on this hardware.
+Branch cand/v0.6-mla + versions/v0.6-candidate; master untouched at v0.4.

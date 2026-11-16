@@ -65,6 +65,35 @@
         "state_bytes": "128 KiB constant FP32 vs 4 MiB dense KV alloc (cap 2048) / 2 MiB fp32 @2048 tokens",
         "parameter_count": "10,048,912 (vs dense 9,782,528)"
       }
+    },
+    {
+      "name": "v0.6-candidate",
+      "commit": "d148e08",
+      "note": "MLA/latent-KV opt-in (attention_type=mla, latent 64): 4x KV memory reduction (256 vs 1024 B/token/layer); decode +12-17% slower at all measured contexts; prefill ~10-20% slower (no absorption trick); NOT promoted; opt-in retained for memory-bound long context (unmeasurable here)",
+      "test_summary": "338 passed, 2 skipped, 1 warning in 28.05s",
+      "promoted": false
+    },
+    {
+      "name": "v0.6-candidate",
+      "commit": "d148e08",
+      "branch": "cand/v0.6-mla",
+      "note": "MLA/latent-KV opt-in (attention_type=mla, mla_latent_dim=64): 4x KV memory reduction (256 vs 1024 B/token/layer fp32); decode +12-17% slower at all measured contexts; prefill ~10-20% slower (no weight absorption); NOT promoted; opt-in retained on branch cand/v0.6-mla + versions/v0.6-candidate snapshot.",
+      "test_summary": "338 passed, 2 skipped, 1 warning in 28.05s",
+      "promoted": false,
+      "evidence": {
+        "tests": "338 passed (319 + 19 new MLA tests); cached-vs-uncached parity verified (token-by-token vs full forward, and single-token vs chunked prefill)",
+        "decode_latency": "context 64/512/1024: MLA 1.698/1.635/1.680 vs GQA 1.450/1.430/1.493 ms/tok (+12.5-17.1% slower)",
+        "prefill_latency": "T=128/512/2048 fp32: MLA 2.43/5.29/15.19 vs dense 2.26/4.43/12.70 ms (-10-16% slower)",
+        "kv_bytes_per_token_per_layer": "256 B (MLA) vs 1024 B (dense GQA, fp32) = 4x reduction",
+        "peak_allocated_T512_fp32": "1074 MiB (MLA) vs 1080 MiB (dense) \u2014 KV cache negligible vs logits at this scale",
+        "parameter_count": "9,716,992 (MLA) vs 9,782,528 (dense)"
+      },
+      "limitations": [
+        "slower at every measured axis at this dev scale (launch-bound; up-projection adds GEMVs without bandwidth relief)",
+        "4x KV memory win unmeasurable on quality without training; real only at long context/memory-bound serving (unmeasurable here)",
+        "two-slice RoPE (q new positions, k full range) differs from MLA's decoupled-rope design; rotation re-done per step",
+        "no weight absorption (DeepSeek's W_uk-into-q)"
+      ]
     }
   ]
 }

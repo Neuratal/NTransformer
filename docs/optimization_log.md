@@ -136,3 +136,8 @@ See `docs/rnd_report.md` for the full loop. Summary:
 - v0.5-candidate (GDN): implemented, tested, benchmarked — rejected for general
   promotion (latency regression everywhere at dev scale; 32x memory win noted).
   Opt-in only. No default changes; v0.4 remains best.
+
+## R&D loop additions (frontier 2026 references)
+- v0.6-candidate (MLA): implemented + tested + benchmarked — rejected for
+  general adoption (latency regression everywhere at dev scale; 4x KV memory
+  win real but unexploitable here). Branch-only candidate; best stays v0.4.
