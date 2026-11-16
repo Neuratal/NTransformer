@@ -1,0 +1,14 @@
+{
+  "best": "v0.2-baseline",
+  "promoted_at": "2026-11-16",
+  "rule": "best is promoted only when all tests pass AND >=1 benchmark axis improves reproducibly without correctness regression. Ties or regressions keep the prior best.",
+  "candidates": [
+    {
+      "name": "v0.2-baseline",
+      "commit": "c31418e",
+      "note": "Immutable baseline: V1 + integration phase. Reference for all future ablations.",
+      "test_summary": "268 passed, 2 skipped in 18.03s",
+      "promoted": true
+    }
+  ]
+}
