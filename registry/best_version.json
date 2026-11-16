@@ -140,6 +140,13 @@
         "chunk sizes >64 underflow cumulative decay products (tested at C<=64 only)",
         "memory win real but tiny at <=2048 context on 8GB GPU; grows with context length"
       ]
+    },
+    {
+      "name": "v1.0.0-rc1",
+      "commit": "6fe3b68",
+      "note": "v1.0 engineering candidate: training engine (presets, AdamW, cosine, accumulation, clipping, AMP), chunked linear CE (recompute-in-backward), full training checkpoint resume, memory estimator, DDP path, 13 scale presets with measured counts",
+      "test_summary": "337 passed, 3 skipped, 1 warning in 33.34s",
+      "promoted": false
     }
   ]
 }
