@@ -4,6 +4,12 @@ Date: 2026-11-16
 Project: Neuratal language model foundation — Transformer core (V1)
 Status: **Implementation complete, tested on CPU and CUDA. Untrained model; no training artifacts exist.**
 
+> **Update (2026-11-16):** A later engineering pass added a training engine,
+> chunked cross-entropy, opt-in MoE, MoE presets, local sharded checkpoints, and
+> measured dense/MoE smoke tests. See `docs/moe_integration.md` for that pass's
+> final report, scale-readiness table, and limitations. Statements below such as
+> "no training loop" and "no MoE" describe the earlier Phase 5 snapshot.
+
 This report covers Phases 2–5 (implementation, tests, integration audit, final
 report). Phase 1 is documented in `docs/architecture_audit.md`. All quantitative
 claims below were measured on this machine or computed exactly by the

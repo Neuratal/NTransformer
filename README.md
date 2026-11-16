@@ -4,9 +4,12 @@ A decoder-only, autoregressive Transformer core for the **Neuratal** language
 model project — designed to consume **NTokenizer v0.3** (byte-level BPE,
 vocab **262,144**) token IDs directly.
 
-**Status: v1.0 engineering candidate.** Architecture, inference AND training
-engine now exist (no real training run has been executed here; capability
-remains "ölçülemedi"). See [Known limitations](#known-limitations) and
+**Status: v1.0 engineering candidate.** Architecture, inference, and a training
+engine now exist. Dense training was validated end-to-end on the project's
+8 GB GPU with synthetic data only; no real corpus pretraining has been run and
+no quality claims are made. Opt-in Mixture-of-Experts (MoE) is implemented,
+tested, checkpointed, and resume-tested at small scale. See
+[Known limitations](#known-limitations), `docs/moe_integration.md`, and
 `docs/final_report.md`.
 
 ## Architecture (V1)
@@ -17,7 +20,7 @@ remains "ölçülemedi"). See [Known limitations](#known-limitations) and
 | Normalization | RMSNorm (fp32 statistics, no bias) |
 | Positions | RoPE (GPT-NeoX rotate-half), offset-aware for KV-cache decoding |
 | Attention | Grouped-query attention (separate Q/KV head counts) via PyTorch SDPA, explicit causal regimes |
-| MLP | SwiGLU (bias-free) |
+| MLP | SwiGLU (bias-free); opt-in top-k MoE with independent SwiGLU experts |
 | Embeddings | **Factorized + tied** (ALBERT-style): one shared `V×F` matrix feeds input projection (`F→D`) and output projection (`D→F`); logits = `(h @ W_outᵀ) @ Eᵀ` |
 | Weight tying | Mandatory in V1; the tied matrix exists exactly once (the output head owns no vocabulary parameter) |
 | Serialization | safetensors + `config.json` (strict key/shape validation) |
@@ -103,6 +106,11 @@ separate decision to be made with training-phase measurements.
 - `fp32_logits`: compute the head in fp32
 - `bos_token_id` / `eos_token_id` / `pad_token_id`: generation fallbacks; never
   injected implicitly
+- `num_experts=0` keeps the dense path byte-for-byte; `num_experts>=2` enables
+  MoE (`num_experts=1` is rejected). `moe_layer_indices` or
+  `moe_layer_frequency` selects which layers are MoE; dense and MoE layers can
+  coexist. `num_experts_per_token` is top-k; `capacity_factor=None` disables
+  token dropping. See [Mixture of Experts](#mixture-of-experts-opt-in).
 
 Serialized checkpoints store the **resolved** config; loading re-validates.
 
@@ -112,8 +120,9 @@ Serialized checkpoints store the **resolved** config; loading re-validates.
 (exact per-row math; bitwise equality is not guaranteed across chunk boundaries —
 measured ≤ ~6e-6 fp32 ulps). It does **not** reduce the memory of a fully
 materialized `[batch, sequence, vocab]` logits tensor (at B=8, T=512, fp32 that is
-~4.3 GB). Fused/chunked cross-entropy is a training-phase concern and is not
-implemented. `fp32_logits=True` doubles transient head memory for extra precision.
+~4.3 GB). Training therefore uses `chunked_linear_cross_entropy`, which never
+materializes the full `[B, T, V]` tensor. `fp32_logits=True` doubles transient
+head memory for extra precision.
 
 ## KV cache and generation
 
@@ -157,6 +166,56 @@ model = load_pretrained("ckpt_dir/", map_location="cpu")
 - Load: validates JSON structure, `format_version`, architecture name, unknown config keys, **missing** keys, **unexpected** keys, and per-tensor shapes
 - The tied matrix is serialized exactly once
 - Loading preserves stored dtypes (no silent casts)
+- Local **sharded** checkpoints (`model.safetensors.index.json` + N shards) are
+  available for large models: `save_pretrained_sharded` / `load_pretrained_sharded`.
+  This is a local format, **not** a distributed/resharded checkpoint system.
+
+## Mixture of Experts (opt-in)
+
+MoE is disabled by default and never changes the dense path. Enabling it:
+
+```python
+from neuratal import NeuratalConfig, NeuratalModel
+
+cfg = NeuratalConfig(
+    num_experts=8,               # 0 = dense; 1 is rejected
+    num_experts_per_token=2,     # top-k
+    expert_hidden_dim=1728,      # per-expert SwiGLU width
+    moe_layer_frequency=1,       # or moe_layer_indices=[...]
+    shared_expert=False,
+)
+model = NeuratalModel(cfg)
+print(model.active_parameters_per_token())   # architecture-level count
+```
+
+- Each expert is an independent bias-free SwiGLU; the router is fp32 top-k
+  softmax with normalized selected gates.
+- Dispatch sorts token assignments by expert once and runs one loop over
+  experts (never over tokens). Capacity dropping is opt-in.
+- Auxiliary load-balance and optional z-loss are added to the training loss only
+  when `compute_aux=True`; inference/generation does not build that graph.
+- The training engine logs `aux_loss`, `router_z_loss`, `tokens_per_expert`,
+  routing entropy, and dropped assignments. MoE and dense layers may be mixed
+  in one model.
+- Training/optimizer/checkpoint/resume paths are architecture-aware; loading a
+  dense checkpoint into a MoE config (or vice versa) fails with a specific
+  error instead of silently mismatching.
+
+Presets: `small-moe`, `1b-moe`, `7b-moe`, `30b-moe`, `100b-moe`, `200b-moe`,
+`500b-moe`. Counts are measured from the real module tree on the meta device and
+reported as **total** and **active per token**. Every expert still costs
+checkpoint and optimizer storage.
+
+Measured small-scale smoke test (RTX 4060 Laptop, 8 GB): `small-moe`
+(402,301,056 total / 123,609,216 active) ran two BF16 steps at **3.587 GiB**
+peak with finite loss and all 8 experts receiving tokens; checkpoint metadata
+and resume worked. This validates plumbing, not model quality.
+
+Honest boundaries: DDP MoE router statistics are per-rank (global load balance
+is not synchronized), expert/tensor/pipeline parallelism is **not** implemented,
+and `zero1/zero2/zero3/fsdp` in `estimate()` are accounting models only. Full
+design, benchmark detail, and the scale-readiness table are in
+`docs/moe_integration.md`.
 
 ## Experimental attention types
 
@@ -183,32 +242,43 @@ python -m pytest tests/ -k cuda  # CUDA-only subset
 python -m pytest tests/test_ntokenizer_integration.py  # integration suite
 ```
 
-299 collected at time of writing (297 passed, 2 skipped — the two CUDA-on-CPU
+397 collected at time of writing (**394 passed, 3 skipped** — the CUDA-on-CPU
 probes); CUDA results measured on an RTX 4060 Laptop GPU (torch 2.15.0+cu132)
-— see `docs/final_report.md`, `docs/ntokenizer_compatibility.md`, and
-`docs/benchmark_results.md`. Tests use the full 262,144-token vocabulary.
+— see `docs/moe_integration.md`, `docs/final_report.md`,
+`docs/ntokenizer_compatibility.md`, and `docs/benchmark_results.md`. Tests use
+the full 262,144-token vocabulary.
 
 ## Known limitations
 
-- V1 is untrained; no training claims are made anywhere.
+- V1 is untrained; no quality claims are made anywhere. Dense/MoE training runs
+  are synthetic plumbing validations only.
 - `enable_gqa=True` on SDPA is verified on this machine's build (torch 2.15.0+cu132,
   RTX 4060, sm_89) and falls back explicitly (with a one-time warning) to KV-head
   expansion on builds that reject it. Cross-device behavior is tolerance-checked,
   not bit-identical.
-- Chunked logits: exact math, but the final logits tensor still requires full
-  `[B, T, V]` memory; reducing it needs a training-phase loss implementation.
+- Chunked cross-entropy avoids the full `[B, T, V]` materialization; the logits
+  chunk itself is still bounded by `logits_chunk_size` and vocab width.
+- MoE is a readable reference implementation: a Python loop over experts, no
+  fused all-to-all, no expert parallelism, no capacity-aware kernel. DDP router
+  statistics are per-rank and not globally synchronized.
+- Local sharded checkpoints are not distributed checkpoints: every rank owns a
+  full state dict; there is no resharding or asynchronous upload.
 - `hidden_dropout` applies to residual-branch outputs; dropout defaults to 0.0.
 - `generate()` is a minimal greedy/sampling helper, not a serving stack.
 - The `reference` attention implementation exists for correctness testing/debugging;
   it is not a performance path.
-- No benchmarks are claimed as production numbers; see the report for what was
+- No benchmarks are claimed as production numbers; see the reports for what was
   measured and how.
 
 ## Project boundaries (V1)
 
-No training, no optimizer, no LR schedule, no dataset/tokenizer work, no MoE, no
-custom kernels, no MLA/Mamba/DeltaNet variants, no fused cross-entropy. See
-`docs/architecture_audit.md` for the deferral list with re-open triggers.
+Implemented: architecture, inference, training engine, chunked cross-entropy,
+dense presets 50M–500B, opt-in MoE with presets, local sharded checkpoints, and a
+closed-form memory estimator. Not implemented: real-corpus pretraining,
+production distributed training (ZeRO/FSDP are estimates only), expert/tensor/
+pipeline parallelism, custom fused kernels, and MLA/Mamba variants. See
+`docs/architecture_audit.md` and `docs/moe_integration.md` for deferrals and
+re-open triggers.
 
 ## Benchmarks
 
@@ -238,6 +308,7 @@ examples/neuratal_inference.py # full integration example (with verification)
 examples/benchmark.py          # dev-preset spot benchmark
 docs/architecture_audit.md    # Phase 1 audit
 docs/final_report.md          # Phase 5 report (measured results)
+docs/moe_integration.md       # MoE design, measured smoke tests, scale readiness
 docs/ntokenizer_compatibility.md
 docs/benchmark_methodology.md
 docs/benchmark_results.md
