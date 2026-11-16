@@ -1,5 +1,6 @@
 from neuratal.model.attention import GQAAttention, reference_attention
 from neuratal.model.gated_delta_net import DeltaNetCache, GatedDeltaNetAttention
+from neuratal.model.latent_kv import LatentKVAttention, LatentKVCache
 from neuratal.model.block import NeuratalBlock
 from neuratal.model.cache import CacheOverflowError, KVCache
 from neuratal.model.embeddings import FactorizedEmbedding
@@ -13,6 +14,8 @@ __all__ = [
     "GQAAttention",
     "GatedDeltaNetAttention",
     "DeltaNetCache",
+    "LatentKVAttention",
+    "LatentKVCache",
     "NeuratalBlock",
     "KVCache",
     "CacheOverflowError",

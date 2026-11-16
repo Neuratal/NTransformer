@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 _ALLOWED_DTYPES = ("float32", "bfloat16", "float16")
 _ALLOWED_ATTENTION_IMPL = ("sdpa", "reference")
-_ALLOWED_ATTENTION_TYPE = ("gqa", "gated_delta")
+_ALLOWED_ATTENTION_TYPE = ("gqa", "gated_delta", "mla")
 
 
 def _round_to_multiple(value: float, multiple: int) -> int:
@@ -56,7 +56,8 @@ class NeuratalConfig:
     rotary_dim: Optional[int] = None  # None => head_dim; must be even and <= head_dim
     attention_dropout: float = 0.0
     attention_implementation: str = "sdpa"  # "reference" is a test/debug path, not for training
-    attention_type: str = "gqa"             # "gated_delta" is the experimental GDN prototype (opt-in)
+    attention_type: str = "gqa"             # "gated_delta"/"mla" are experimental prototypes (opt-in)
+    mla_latent_dim: Optional[int] = None    # only for attention_type="mla"; None -> 64
 
     # --- Normalization / regularization ---
     rms_norm_eps: float = 1e-5
@@ -186,6 +187,18 @@ class NeuratalConfig:
                 "tie_word_embeddings=False is not supported in this architecture: V1 mandates "
                 "factorized tied embeddings with a single shared matrix (no untied path is "
                 "silently provided). Set tie_word_embeddings=True."
+            )
+
+        if self.mla_latent_dim is None:
+            self.mla_latent_dim = 64
+        for name in ("mla_latent_dim",):
+            if getattr(self, name) is not None:
+                self._require_int(name, getattr(self, name))
+        if self.mla_latent_dim < 1:
+            raise ValueError(f"mla_latent_dim must be >= 1, got {self.mla_latent_dim}")
+        if self.mla_latent_dim > self.hidden_size:
+            raise ValueError(
+                f"mla_latent_dim ({self.mla_latent_dim}) cannot exceed hidden_size ({self.hidden_size})"
             )
 
         if self.attention_type not in _ALLOWED_ATTENTION_TYPE:
