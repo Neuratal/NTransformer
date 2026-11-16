@@ -69,13 +69,6 @@
     {
       "name": "v0.6-candidate",
       "commit": "d148e08",
-      "note": "MLA/latent-KV opt-in (attention_type=mla, latent 64): 4x KV memory reduction (256 vs 1024 B/token/layer); decode +12-17% slower at all measured contexts; prefill ~10-20% slower (no absorption trick); NOT promoted; opt-in retained for memory-bound long context (unmeasurable here)",
-      "test_summary": "338 passed, 2 skipped, 1 warning in 28.05s",
-      "promoted": false
-    },
-    {
-      "name": "v0.6-candidate",
-      "commit": "d148e08",
       "branch": "cand/v0.6-mla",
       "note": "MLA/latent-KV opt-in (attention_type=mla, mla_latent_dim=64): 4x KV memory reduction (256 vs 1024 B/token/layer fp32); decode +12-17% slower at all measured contexts; prefill ~10-20% slower (no weight absorption); NOT promoted; opt-in retained on branch cand/v0.6-mla + versions/v0.6-candidate snapshot.",
       "test_summary": "338 passed, 2 skipped, 1 warning in 28.05s",
