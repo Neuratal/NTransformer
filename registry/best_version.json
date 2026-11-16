@@ -87,6 +87,25 @@
         "two-slice RoPE (q new positions, k full range) differs from MLA's decoupled-rope design; rotation re-done per step",
         "no weight absorption (DeepSeek's W_uk-into-q)"
       ]
+    },
+    {
+      "name": "v0.7-candidate",
+      "commit": "03e4dd3",
+      "branch": "cand/v0.7-sliding-window",
+      "note": "Sliding-window attention opt-in (swa_window=512): windowed causal mask identical math contract otherwise; 3-seed evidence shows wash at T=1024 and 20-40% latency REGRESSION at T=2048 (mask path cannot use flash; attention share only ~7.5%). Rejected.",
+      "test_summary": "13 SWA tests pass; master suite unchanged",
+      "promoted": false,
+      "evidence": {
+        "correctness": "13 tests: causality, cache parity, roundtrip bitwise, mask alignment (lower-right)",
+        "T1024": "gqa 6.43/6.86/7.63 vs swa 6.41/7.09/7.92 ms (wash)",
+        "T2048": "gqa 12.58/12.74/12.31 vs swa 18.43/16.53/14.83 ms (20-40% slower, all 3 seeds)",
+        "attention_share": "fmha ~7.5% of forward at T=2048, ~4.5% at T=512 (measured via profiler)"
+      },
+      "limitations": [
+        "loss at every long-context point measured",
+        "quality vs dense unmeasurable without training",
+        "flash kernel unavailable under explicit masks on this build"
+      ]
     }
   ]
 }

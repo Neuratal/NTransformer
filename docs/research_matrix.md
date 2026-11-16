@@ -124,3 +124,18 @@ prefill). Quality unverifiable without training. Kept as branch cand/v0.6-mla
 NOT merged into master; best_version stays v0.4. Honest verdict: at our
 launch-bound 9.8M scale the up-projection costs more than the KV broadcast
 saves; MLA only pays at long-context memory-bound serving (unmeasurable here).
+
+## Iteration 11 — SWA + bf16 GEMV (both rejected on measurement)
+
+SWA (Mistral-style, swa_window=512, lower-right-aligned mask):
+- correctness: window-mask semantics, causality, cache parity, roundtrip bitwise — all green
+- measured 3 seeds: wash at T=1024; **20-40% slower at T=2048** (flash kernel
+  not selectable under explicit masks; attention is only ~7.5% of forward)
+- verdict: rejected. Branch cand/v0.7-sliding-window, frozen snapshot, not promoted.
+
+bf16 decode GEMV check (bottleneck #4):
+- micro-GEMV [1x32]@[32x262144]: fp32 146.7 us (229 GB/s) -> bf16 58.4 us (287 GB/s)
+- end-to-end decode fp32 0.73-0.77 ms/tok vs bf16 0.74-0.82 — NO end-to-end win
+  (launch-bound; upcast overheads eat the 88 us saving)
+- verdict: not a viable architecture lever at this scale; bf16 stays a config
+  option; bottleneck #4 fix remains launch-overhead reduction (v0.4 graphs).

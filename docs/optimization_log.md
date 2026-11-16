@@ -141,3 +141,8 @@ See `docs/rnd_report.md` for the full loop. Summary:
 - v0.6-candidate (MLA): implemented + tested + benchmarked — rejected for
   general adoption (latency regression everywhere at dev scale; 4x KV memory
   win real but unexploitable here). Branch-only candidate; best stays v0.4.
+
+## R&D loop additions (iteration 11)
+- SWA (v0.7-candidate): rejected on 3-seed timings (wash T=1024, 20-40% slower T=2048)
+- bf16 decode GEMV: micro 2.5x faster (229->287 GB/s), no end-to-end latency win
+  at launch-bound scale — config-level recommendation only

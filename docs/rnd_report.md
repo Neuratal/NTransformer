@@ -218,3 +218,10 @@ Measured: decode +12.5-17.1% slower at ctx 64/512/1024 (vs dense GQA);
 prefill 10-16% slower; KV bytes/token/layer 4x lower (256 vs 1024 B);
 params 9.72M vs 9.78M. NOT promoted; rejected for adoption on this hardware.
 Branch cand/v0.6-mla + versions/v0.6-candidate; master untouched at v0.4.
+
+## Iteration 11 — SWA + bf16 GEMV (both rejected on measurement)
+
+SWA implemented + tested + benchmarked (3 seeds): wash at T=1024; 20-40% slower
+T=2048 (mask disables flash path; attention share 7.5%). Rejected; branch
+cand/v0.7-sliding-window; frozen as versions/v0.7-candidate. bf16 GEMV check:
+2.5x micro speedup, zero end-to-end decode gain (launch-bound) — not adopted.
