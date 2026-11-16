@@ -29,11 +29,15 @@ class ChunkedLinearCEFunction(torch.autograd.Function):
         flat_t = targets.reshape(-1).to(torch.long).contiguous()
         n = (flat_t != ignore_index).sum().detach()
         total = flat_h.new_zeros((), dtype=torch.float32)
+        # Hoist fp32 weight conversion out of the chunk loop. For bf16/fp16
+        # models this avoids re-allocating the full [V, F] matrix once per chunk.
+        op32 = None if out_proj_weight is None else out_proj_weight.float()
+        emb32 = emb_weight.float()
         with torch.no_grad():
             for start in range(0, flat_h.size(0), chunk_size):
                 h, t = flat_h[start:start + chunk_size], flat_t[start:start + chunk_size]
-                x = h.float() if out_proj_weight is None else F.linear(h.float(), out_proj_weight.float())
-                logits = F.linear(x, emb_weight.float())
+                x = h.float() if op32 is None else F.linear(h.float(), op32)
+                logits = F.linear(x, emb32)
                 total = total + F.cross_entropy(logits, t, ignore_index=ignore_index, reduction="sum")
         ctx.save_for_backward(flat_h, flat_t, out_proj_weight, emb_weight)
         ctx.chunk_size = chunk_size
@@ -53,17 +57,18 @@ class ChunkedLinearCEFunction(torch.autograd.Function):
         grad_h = torch.zeros_like(flat_h, dtype=torch.float32)
         grad_op = None if out_proj_weight is None else torch.zeros_like(out_proj_weight, dtype=torch.float32)
         grad_emb = torch.zeros_like(emb_weight, dtype=torch.float32)
+        op32 = None if out_proj_weight is None else out_proj_weight.float()
+        emb32 = emb_weight.float()
 
         for start in range(0, flat_h.size(0), chunk_size):
             h, t = flat_h[start:start + chunk_size], flat_t[start:start + chunk_size]
             h32 = h.float()
-            x = h32 if out_proj_weight is None else F.linear(h32, out_proj_weight.float())
-            emb32 = emb_weight.float()
+            x = h32 if op32 is None else F.linear(h32, op32)
             logits = F.linear(x, emb32)
 
-            # softmax cross-entropy grad: (softmax - onehot) * grad / n_tokens? no — caller passes grad_output=1/n_tokens
-            probs = torch.softmax(logits, dim=-1)
-            grad_logits = probs.clone()
+            # softmax cross-entropy grad: (softmax - onehot) * grad_output
+            # (the caller passes grad_output=1/n_tokens for mean reduction)
+            grad_logits = torch.softmax(logits, dim=-1)
             valid = t != ignore_index
             rows = torch.arange(t.numel(), device=t.device)[valid]
             grad_logits[rows, t[valid]] -= 1.0
@@ -72,9 +77,9 @@ class ChunkedLinearCEFunction(torch.autograd.Function):
             # grads to x, emb, op, h
             grad_x = grad_logits @ emb32            # [c, d_x]
             grad_emb.add_(grad_logits.t() @ x)      # [V, d_x]
-            if out_proj_weight is not None:
+            if op32 is not None:
                 grad_op.add_(grad_x.t() @ h32)      # [d_x, H]
-                gh = grad_x @ out_proj_weight.float()
+                gh = grad_x @ op32
             else:
                 gh = grad_x
             grad_h[start:start + chunk_size] = gh
