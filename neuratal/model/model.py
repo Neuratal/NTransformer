@@ -77,11 +77,15 @@ class NeuratalModel(nn.Module):
 
         cfg = self.config
         effective_use_cache = cfg.use_cache if use_cache is None else use_cache
-        # An explicitly passed cache is always maintained; the flag only controls creation.
         if past_key_values is None and effective_use_cache:
             past_key_values = KVCache(cfg)
 
         past_length = past_key_values.get_seq_length() if past_key_values is not None else 0
+        if past_length + seq_len > cfg.max_position_embeddings:
+            raise ValueError(
+                f"sequence would exceed max_position_embeddings: past={past_length}, "
+                f"new tokens={seq_len}, max_position_embeddings={cfg.max_position_embeddings}"
+            )
         positions = torch.arange(past_length, past_length + seq_len, device=input_ids.device)
 
         hidden = self.embed_tokens(input_ids)

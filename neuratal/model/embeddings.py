@@ -69,9 +69,13 @@ def _validate_token_ids(input_ids: torch.Tensor, vocab_size: int) -> None:
         raise ValueError(f"input_ids must have an integer dtype, got {input_ids.dtype}")
     if input_ids.numel() == 0:
         return
-    min_id = int(input_ids.min().item())
-    max_id = int(input_ids.max().item())
-    if min_id < 0 or max_id >= vocab_size:
-        raise ValueError(
-            f"token id out of range: min={min_id}, max={max_id}, vocab_size={vocab_size}"
-        )
+    if input_ids.device.type == "cpu":
+        # Host-side value validation is free on CPU. On CUDA it would force a device
+        # sync per forward, so it is skipped there; out-of-range IDs still fail loudly
+        # via the embedding's index bounds check (CUDA device assert / CPU IndexError).
+        min_id = int(input_ids.min().item())
+        max_id = int(input_ids.max().item())
+        if min_id < 0 or max_id >= vocab_size:
+            raise ValueError(
+                f"token id out of range: min={min_id}, max={max_id}, vocab_size={vocab_size}"
+            )

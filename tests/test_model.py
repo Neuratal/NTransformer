@@ -165,3 +165,10 @@ class TestDtypeAndDevices:
         out = model(ids)
         out.logits.square().mean().backward()
         assert torch.isfinite(out.logits.float()).all()
+
+
+class TestContextCapacity:
+    def test_sequence_exceeding_max_position_rejected(self):
+        model = make_model(max_position_embeddings=8)
+        with pytest.raises(ValueError, match="max_position_embeddings"):
+            model(torch.randint(0, V, (1, 9)))

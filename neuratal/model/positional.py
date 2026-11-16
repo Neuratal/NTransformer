@@ -64,13 +64,18 @@ class RotaryEmbedding(RotaryEmbeddingBase):
             raise ValueError(f"positions must be 1-D [sequence], got shape {tuple(positions.shape)}")
         if positions.numel() == 0:
             raise ValueError("positions must not be empty")
-        min_pos, max_pos = int(positions.min().item()), int(positions.max().item())
-        if min_pos < 0:
-            raise ValueError(f"positions must be >= 0, got {min_pos}")
-        if max_pos >= self.max_position_embeddings:
-            raise ValueError(
-                f"positions exceed max_position_embeddings ({self.max_position_embeddings}): {max_pos}"
-            )
+        if positions.device.type == "cpu":
+            # Host-side validation is free on CPU and never executed on the CUDA hot path,
+            # where it would force a device sync per layer per forward. On CUDA, the model's
+            # int-level capacity check (model.forward) enforces the limit without syncs;
+            # direct CUDA misuse still fails loudly via index_select bounds asserts.
+            min_pos, max_pos = int(positions.min().item()), int(positions.max().item())
+            if min_pos < 0:
+                raise ValueError(f"positions must be >= 0, got {min_pos}")
+            if max_pos >= self.max_position_embeddings:
+                raise ValueError(
+                    f"positions exceed max_position_embeddings ({self.max_position_embeddings}): {max_pos}"
+                )
         cos = self.cos_cached.index_select(0, positions.to(torch.long))
         sin = self.sin_cached.index_select(0, positions.to(torch.long))
         # [1, 1, T, rotary_dim] for broadcasting over [batch, heads, T, rotary_dim]

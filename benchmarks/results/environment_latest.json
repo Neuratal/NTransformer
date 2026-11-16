@@ -72,9 +72,9 @@
     "memory_total_mib": "8188 MiB"
   },
   "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
-  "run_id": "20261116T144957Z",
+  "run_id": "20261116T145018Z",
   "safetensors_version": "0.8.0",
-  "saved_at_utc": "2026-11-16T14:49:58.610408+00:00",
+  "saved_at_utc": "2026-11-16T14:50:19.092903+00:00",
   "sdpa_backends": {
     "cudnn[bfloat16]": "ok",
     "cudnn[float16]": "ok",
