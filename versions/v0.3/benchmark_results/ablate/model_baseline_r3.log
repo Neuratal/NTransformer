@@ -1,0 +1,6 @@
+model params: 9,782,528 (37.3 MiB)  device=cuda  dtype=torch.float32
+B=1 T=32: median 1.019 ms  p95 1.558 ms  31392.2 tok/s  logits 32 MiB
+B=1 T=128: median 1.577 ms  p95 2.492 ms  81143.3 tok/s  logits 128 MiB
+B=1 T=256: median 2.274 ms  p95 3.166 ms  112590.1 tok/s  logits 256 MiB
+B=1 T=512: median 3.360 ms  p95 3.845 ms  152395.6 tok/s  logits 512 MiB
+model results -> /home/justerdem14/Masaüstü/Team N/NTransformer/benchmarks/results/model_20261116T153809Z.json

@@ -1,5 +1,5 @@
 {
-  "best": "v0.2-baseline",
+  "best": "v0.3",
   "promoted_at": "2026-11-16",
   "rule": "best is promoted only when all tests pass AND >=1 benchmark axis improves reproducibly without correctness regression. Ties or regressions keep the prior best.",
   "candidates": [
@@ -7,7 +7,27 @@
       "name": "v0.2-baseline",
       "commit": "c31418e",
       "note": "Immutable baseline: V1 + integration phase. Reference for all future ablations.",
-      "test_summary": "268 passed, 2 skipped in 18.03s",
+      "test_summary": "268 passed, 2 skipped",
+      "promoted": false
+    },
+    {
+      "name": "v0.3",
+      "commit": "e3633be",
+      "note": "Fused qkv_proj + gate_up_proj (one GEMM each, mathematically identical); legacy v0.2 checkpoint migration at load time (concat + UserWarning).",
+      "evidence": {
+        "tests": "276 passed, 2 skipped",
+        "fp32_prefill_dev_T256_vs_T512": "candidate 2.031/3.413 ms vs baseline 2.192/3.551 ms (3 rounds)",
+        "fp32_prefill_ref50m_T512": "candidate 10.50/10.99/11.17 ms vs baseline 11.79/14.78/14.23 ms (3 rounds, noisy laptop)",
+        "bf16": "wash within run spread",
+        "decode_fp32": "0.61-0.66 ms/tok both (wash)",
+        "parameter_count": "9,782,528 (unchanged)",
+        "legacy_migration_max_abs_diff": "< 1e-5 logits"
+      },
+      "limitations": [
+        "bf16 measurements dominated by clock-state run variance; no measurable bf16 win",
+        "decode unchanged (Python launch-bound)",
+        "checkpoint format changed (format_version=1, keys fused); v0.2 checkpoints load via transparent migration"
+      ],
       "promoted": true
     }
   ]

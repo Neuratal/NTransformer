@@ -1,0 +1,3 @@
+seq=64: uncached 1.03 ms  cached_prefill 1.10 ms  decode 0.61 ms/tok  diff 0.00e+00
+seq=512: uncached 3.27 ms  cached_prefill 3.48 ms  decode 0.65 ms/tok  diff 0.00e+00
+kv cache results -> /home/justerdem14/Masaüstü/Team N/NTransformer/benchmarks/results/kv_cache_20261116T153856Z.json
