@@ -111,3 +111,16 @@ fp32 prefill T=128 −10%, cached decode −24%. Everything else measured within
 run-to-run noise; three attempts rejected with reasons recorded. All 268 tests
 pass; cached/uncached equivalence remains bitwise at 0.00e+00 in the KV-cache
 benchmark.
+
+---
+
+# R&D loop (2026-11-16, after integration)
+
+See `docs/rnd_report.md` for the full loop. Summary:
+- v0.3 PROMOTED: fused qkv_proj + gate_up_proj (fp32 prefill win ~4-7% dev /
+  ~22% ref-50M, T=512, 3/3 rounds); 276 tests pass; legacy migration tested.
+- CUDA graphs for decode: rejected (static-shape incompatibility; analysis in rnd_report).
+- Mask caching: rejected (0.018 ms/call, <0.1%).
+- torch.compile reduce-overhead for prefill: measured 0.946 ms (vs 1.003 default,
+  2.10-2.23 eager) — opt-in only, never in generate().
+- bf16 wins unproven (clock variance); decode unchanged (~0.62-0.67 ms/tok).
