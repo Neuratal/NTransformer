@@ -24,6 +24,17 @@ from typing import Any, Callable
 SEED = 42
 RESULTS_DIR = Path(__file__).resolve().parent / "results"
 
+# canonical result filenames (in addition to timestamped archives + *_latest.json)
+_CANONICAL = {
+    "environment": "environment.json",
+    "tokenizer": "tokenizer_results.json",
+    "model": "model_results.json",
+    "attention": "attention_results.json",
+    "kv_cache": "kv_cache_results.json",
+    "end_to_end": "end_to_end_results.json",
+    "memory": "memory_results.json",
+}
+
 
 def run_id() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -119,8 +130,10 @@ def save_result(name: str, payload: dict[str, Any]) -> Path:
     payload["saved_at_utc"] = datetime.now(timezone.utc).isoformat()
     path = RESULTS_DIR / f"{name}_{run_id()}.json"
     path.write_text(json.dumps(payload, indent=2, sort_keys=True))
-    latest = RESULTS_DIR / f"{name}_latest.json"
-    latest.write_text(json.dumps(payload, indent=2, sort_keys=True))
+    (RESULTS_DIR / f"{name}_latest.json").write_text(json.dumps(payload, indent=2, sort_keys=True))
+    canonical = _CANONICAL.get(name)
+    if canonical:
+        (RESULTS_DIR / canonical).write_text(json.dumps(payload, indent=2, sort_keys=True))
     return path
 
 

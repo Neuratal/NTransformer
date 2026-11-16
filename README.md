@@ -51,10 +51,13 @@ ids = torch.tensor([[168069, 5431, 33]])          # NTokenizer("Hello, world!")
 out = generate(model, ids, max_new_tokens=16)
 ```
 
-End-to-end with the real tokenizer (encode → model → decode):
+End-to-end with the real tokenizer (encode → model → decode), with verified
+tokenizer ↔ checkpoint compatibility:
 
 ```bash
-python examples/inference.py --prompt "Hello, world!" --max-new-tokens 16
+python examples/neuratal_inference.py --prompt "Merhaba, dünya!" --max-new-tokens 16
+python examples/neuratal_inference.py --checkpoint path/to/ckpt  # loads + verifies
+python examples/neuratal_inference.py --save-checkpoint path/to/ckpt  # writes sidecar
 ```
 
 **The development preset is untrained.** Its outputs are gibberish; the example
@@ -120,6 +123,27 @@ implemented. `fp32_logits=True` doubles transient head memory for extra precisio
 - `generate()`: greedy or temperature/top-k sampling, EOS early stop (sequences stopping early are padded with `pad_token_id`/EOS), fresh cache per call.
 - Cached vs. uncached inference equivalence is tested (token-by-token vs. prefill, multi-chunk, cache offsets).
 
+## Tokenizer integration
+
+The core never imports the tokenizer. `neuratal/integration/` is the only layer
+that knows about NTokenizer:
+
+```python
+from neuratal.integration import NTokenizerAdapter, load_checkpoint_with_tokenizer
+
+adapter = NTokenizerAdapter("../NTokenizer/output/v0.3/ntokenizer-0.3-256k.ntok")
+ids = adapter.encode("Merhaba, dünya!")     # verified handle (CRC + SHA-256 + specials)
+model, adapter, report = load_checkpoint_with_tokenizer("ckpt_dir/", ntok_path)
+```
+
+- Manifest (`neuratal-tokenizer-manifest/1`) binds a checkpoint to the exact
+  artifact: SHA-256, special-token map, vocab size, versions.
+- `write_tokenizer_sidecar()` writes `ckpt_dir/tokenizer.json`;
+  `load_checkpoint_with_tokenizer()` verifies it on load.
+- Checkpoints without a sidecar load exactly as before (backward compatible).
+- Cross-artifact mismatches (e.g., v0.2 vs v0.3) and config/tokenizer EOS
+  mismatches are detected and rejected. See `docs/ntokenizer_compatibility.md`.
+
 ## Serialization
 
 ```python
@@ -139,12 +163,13 @@ model = load_pretrained("ckpt_dir/", map_location="cpu")
 ```bash
 python -m pytest tests/          # CPU + CUDA (params auto-enabled when CUDA exists)
 python -m pytest tests/ -k cuda  # CUDA-only subset
+python -m pytest tests/test_ntokenizer_integration.py  # integration suite
 ```
 
-218 collected at time of writing (217 passed, 1 skipped); CUDA results were measured on an RTX 4060 Laptop
-GPU (torch 2.15.0+cu132) — see `docs/final_report.md`. Tolerances are fp32-tight
-or bf16/fp16-appropriate and are documented at each assertion site. Tests use the
-full 262,144-token vocabulary; nothing is scaled down for speed.
+270 collected at time of writing (268 passed, 2 skipped — the two CUDA-on-CPU
+probes); CUDA results measured on an RTX 4060 Laptop GPU (torch 2.15.0+cu132)
+— see `docs/final_report.md`, `docs/ntokenizer_compatibility.md`, and
+`docs/benchmark_results.md`. Tests use the full 262,144-token vocabulary.
 
 ## Known limitations
 
@@ -168,12 +193,36 @@ No training, no optimizer, no LR schedule, no dataset/tokenizer work, no MoE, no
 custom kernels, no MLA/Mamba/DeltaNet variants, no fused cross-entropy. See
 `docs/architecture_audit.md` for the deferral list with re-open triggers.
 
+## Benchmarks
+
+```bash
+python benchmarks/benchmark_environment.py   # fingerprint -> results/*.json
+python benchmarks/benchmark_tokenizer.py     # encode/decode throughput
+python benchmarks/benchmark_model.py --device cuda --dtype float32
+python benchmarks/benchmark_kv_cache.py --device cuda
+python benchmarks/benchmark_attention.py --device cuda
+python benchmarks/benchmark_end_to_end.py --device cuda
+python benchmarks/benchmark_memory.py --device cuda --budget-mib 4600
+```
+
+Reproducible (seed 42), timestamped JSON results in `benchmarks/results/`;
+methodology in `docs/benchmark_methodology.md`; measured tables in
+`docs/benchmark_results.md`; optimization attempts in `docs/optimization_log.md`.
+
 ## Layout
 
 ```
-neuratal/            # package: config, model/*, serialization/*
+neuratal/            # core package: config, model/*, serialization/*
+neuratal/integration/  # optional NTokenizer boundary (adapter, manifest, sidecar)
 tests/               # pytest suite (CPU + CUDA)
-examples/inference.py
-docs/architecture_audit.md   # Phase 1 audit
-docs/final_report.md         # Phase 5 report (measured results)
+benchmarks/          # benchmark suite + results/*.json
+examples/inference.py          # minimal pipeline smoke demo
+examples/neuratal_inference.py # full integration example (with verification)
+examples/benchmark.py          # dev-preset spot benchmark
+docs/architecture_audit.md    # Phase 1 audit
+docs/final_report.md          # Phase 5 report (measured results)
+docs/ntokenizer_compatibility.md
+docs/benchmark_methodology.md
+docs/benchmark_results.md
+docs/optimization_log.md
 ```

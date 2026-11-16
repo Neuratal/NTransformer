@@ -49,37 +49,37 @@
     "code": {
       "gen": {
         "16": {
-          "decode_bytes_per_second": 21928006.664908636,
-          "decode_median_s": 4.8340007197111845e-06,
-          "encode_bytes_per_second": 4302803.806985697,
-          "encode_median_s": 2.1149000531295314e-05,
-          "generation_median_s": 0.01440624399765511,
-          "generation_ms_per_token": 0.9003902498534444,
-          "prefill_median_s": 0.0010271709979861043,
+          "decode_bytes_per_second": 22217572.821416426,
+          "decode_median_s": 4.77099820272997e-06,
+          "encode_bytes_per_second": 3700089.585919776,
+          "encode_median_s": 2.459399911458604e-05,
+          "generation_median_s": 0.01415612799974042,
+          "generation_ms_per_token": 0.8847579999837762,
+          "prefill_median_s": 0.0010457220014359336,
           "repeats": 5,
-          "total_median_s": 0.015473413990548579
+          "total_median_s": 0.015271224998286925
         },
         "32": {
-          "decode_bytes_per_second": 44500573.82647707,
-          "decode_median_s": 5.146001058164984e-06,
-          "encode_bytes_per_second": 3704307.1285945517,
-          "encode_median_s": 2.4565997591707855e-05,
-          "generation_median_s": 0.028358290997857694,
-          "generation_ms_per_token": 0.8861965936830529,
-          "prefill_median_s": 0.0010452040005475283,
+          "decode_bytes_per_second": 47012943.68650788,
+          "decode_median_s": 4.870998964179307e-06,
+          "encode_bytes_per_second": 4320372.480812912,
+          "encode_median_s": 2.1062998712295666e-05,
+          "generation_median_s": 0.028092098000342958,
+          "generation_ms_per_token": 0.8778780625107174,
+          "prefill_median_s": 0.0010127140012627933,
           "repeats": 5,
-          "total_median_s": 0.02941933499459992
+          "total_median_s": 0.029134368000086397
         },
         "64": {
-          "decode_bytes_per_second": 85703884.89287908,
-          "decode_median_s": 5.519003025256097e-06,
-          "encode_bytes_per_second": 2992830.232995746,
-          "encode_median_s": 3.0406001314986497e-05,
-          "generation_median_s": 0.05612129299697699,
-          "generation_ms_per_token": 0.8768952030777655,
-          "prefill_median_s": 0.001061222003045259,
+          "decode_bytes_per_second": 85502507.18258084,
+          "decode_median_s": 5.532001523533836e-06,
+          "encode_bytes_per_second": 2743525.6700114342,
+          "encode_median_s": 3.316899892524816e-05,
+          "generation_median_s": 0.0554808189990581,
+          "generation_ms_per_token": 0.8668877968602828,
+          "prefill_median_s": 0.0010226640006294474,
           "repeats": 5,
-          "total_median_s": 0.057286039998871274
+          "total_median_s": 0.056524762003391515
         }
       },
       "prompt_bytes": 91,
@@ -89,37 +89,37 @@
     "english": {
       "gen": {
         "16": {
-          "decode_bytes_per_second": 28142191.873398956,
-          "decode_median_s": 4.726000042865053e-06,
-          "encode_bytes_per_second": 4288085.610222304,
-          "encode_median_s": 2.1687999833375216e-05,
-          "generation_median_s": 0.01463612999941688,
-          "generation_ms_per_token": 0.914758124963555,
-          "prefill_median_s": 0.0009736009997141082,
+          "decode_bytes_per_second": 27970545.48508429,
+          "decode_median_s": 4.755002009915188e-06,
+          "encode_bytes_per_second": 4381831.660834257,
+          "encode_median_s": 2.1224001102382317e-05,
+          "generation_median_s": 0.014171883998642443,
+          "generation_ms_per_token": 0.8857427499151527,
+          "prefill_median_s": 0.0009643490011512768,
           "repeats": 5,
-          "total_median_s": 0.01564117399902898
+          "total_median_s": 0.01512643800015212
         },
         "32": {
-          "decode_bytes_per_second": 50750831.289293095,
-          "decode_median_s": 5.260997568257153e-06,
-          "encode_bytes_per_second": 3887797.5764942844,
-          "encode_median_s": 2.3920998501125723e-05,
-          "generation_median_s": 0.028817786002036883,
-          "generation_ms_per_token": 0.9005558125636526,
-          "prefill_median_s": 0.0009981350012822077,
+          "decode_bytes_per_second": 51365922.91797608,
+          "decode_median_s": 5.197998689254746e-06,
+          "encode_bytes_per_second": 4248127.26774059,
+          "encode_median_s": 2.1891999494982883e-05,
+          "generation_median_s": 0.027943785000388743,
+          "generation_ms_per_token": 0.8732432812621482,
+          "prefill_median_s": 0.0009663939999882132,
           "repeats": 5,
-          "total_median_s": 0.02983742899959907
+          "total_median_s": 0.028948358005436603
         },
         "64": {
-          "decode_bytes_per_second": 77572554.45116694,
-          "decode_median_s": 5.685000360244885e-06,
-          "encode_bytes_per_second": 4081453.516030353,
-          "encode_median_s": 2.2786000045016408e-05,
-          "generation_median_s": 0.05599569699916174,
-          "generation_ms_per_token": 0.8749327656119021,
-          "prefill_median_s": 0.0009512919968983624,
+          "decode_bytes_per_second": 78316487.43524286,
+          "decode_median_s": 5.630998202832416e-06,
+          "encode_bytes_per_second": 2466974.2172133187,
+          "encode_median_s": 3.76980024157092e-05,
+          "generation_median_s": 0.055334856999252224,
+          "generation_ms_per_token": 0.864607140613316,
+          "prefill_median_s": 0.0009557939993101172,
           "repeats": 5,
-          "total_median_s": 0.05695581799955107
+          "total_median_s": 0.05633851300081005
         }
       },
       "prompt_bytes": 93,
@@ -129,37 +129,37 @@
     "turkish": {
       "gen": {
         "16": {
-          "decode_bytes_per_second": 20780227.36182428,
-          "decode_median_s": 5.101002898300067e-06,
-          "encode_bytes_per_second": 2752107.671244484,
-          "encode_median_s": 3.451899829087779e-05,
-          "generation_median_s": 0.014438373000302818,
-          "generation_ms_per_token": 0.9023983125189261,
-          "prefill_median_s": 0.0009757250008988194,
+          "decode_bytes_per_second": 20866153.197709218,
+          "decode_median_s": 5.079997208667919e-06,
+          "encode_bytes_per_second": 2798645.032026433,
+          "encode_median_s": 3.394499799469486e-05,
+          "generation_median_s": 0.014321880000352394,
+          "generation_ms_per_token": 0.8951175000220246,
+          "prefill_median_s": 0.000996558999759145,
           "repeats": 5,
-          "total_median_s": 0.015450184000656009
+          "total_median_s": 0.015396429997053929
         },
         "32": {
-          "decode_bytes_per_second": 42983796.1670188,
-          "decode_median_s": 5.188001523492858e-06,
-          "encode_bytes_per_second": 4058614.4193191617,
-          "encode_median_s": 2.3407003027386963e-05,
-          "generation_median_s": 0.02913173099659616,
-          "generation_ms_per_token": 0.91036659364363,
-          "prefill_median_s": 0.0009744919989316259,
+          "decode_bytes_per_second": 43751216.583892256,
+          "decode_median_s": 5.097001121612266e-06,
+          "encode_bytes_per_second": 3466773.8416104447,
+          "encode_median_s": 2.740299896686338e-05,
+          "generation_median_s": 0.028452853999624494,
+          "generation_ms_per_token": 0.8891516874882655,
+          "prefill_median_s": 0.0009581539998180233,
           "repeats": 5,
-          "total_median_s": 0.030145532000460662
+          "total_median_s": 0.029450738002196886
         },
         "64": {
-          "decode_bytes_per_second": 87135380.45783842,
-          "decode_median_s": 5.347999831428751e-06,
-          "encode_bytes_per_second": 2475311.8296797774,
-          "encode_median_s": 3.837900294456631e-05,
-          "generation_median_s": 0.057174740999471396,
-          "generation_ms_per_token": 0.8933553281167406,
-          "prefill_median_s": 0.0009920750017045066,
+          "decode_bytes_per_second": 82536344.1299415,
+          "decode_median_s": 5.645997589454055e-06,
+          "encode_bytes_per_second": 2417179.8988730335,
+          "encode_median_s": 3.9301998185692355e-05,
+          "generation_median_s": 0.05568301700259326,
+          "generation_ms_per_token": 0.8700471406655197,
+          "prefill_median_s": 0.0009685709992481861,
           "repeats": 5,
-          "total_median_s": 0.058250170997780515
+          "total_median_s": 0.05670429900055751
         }
       },
       "prompt_bytes": 95,
@@ -167,7 +167,7 @@
       "text": "Bug\u00fcn hava ger\u00e7ekten \u00e7ok g\u00fczel, hep birlikte d\u0131\u015far\u0131 \u00e7\u0131kal\u0131m ve manzaray\u0131 seyredelim."
     }
   },
-  "run_id": "20261116T145647Z",
-  "saved_at_utc": "2026-11-16T14:56:49.239614+00:00",
+  "run_id": "20261116T150141Z",
+  "saved_at_utc": "2026-11-16T15:01:43.328764+00:00",
   "tokenizer_sha256": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9"
 }

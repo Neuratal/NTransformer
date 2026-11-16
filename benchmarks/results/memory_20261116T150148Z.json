@@ -1,0 +1,179 @@
+{
+  "budget_mib": 4608,
+  "dev_preset": {
+    "embedding_matrix_bytes_fp32": 33554432,
+    "kv_cache_bytes_fp32_capacity_2048": 4194304,
+    "logits_bytes_B1_T512_fp32": 536870912,
+    "parameter_bytes_fp32": 39130112,
+    "parameter_count": 9782528
+  },
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 8037138432,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "measured": [
+    {
+      "batch": 1,
+      "cell": "dev_preset_forward",
+      "dtype": "torch.float32",
+      "estimated_bytes": 374674432,
+      "logits_bytes_theoretical": 67108864,
+      "parameter_count": 9782528,
+      "params_bytes_theoretical": 39130112,
+      "peak_allocated_bytes": 192429056,
+      "peak_reserved_bytes": 207618048,
+      "seq": 64
+    },
+    {
+      "batch": 1,
+      "cell": "dev_preset_forward",
+      "dtype": "torch.float32",
+      "estimated_bytes": 2723484672,
+      "logits_bytes_theoretical": 536870912,
+      "parameter_count": 9782528,
+      "params_bytes_theoretical": 39130112,
+      "peak_allocated_bytes": 1132476416,
+      "peak_reserved_bytes": 1155530752,
+      "seq": 512
+    },
+    {
+      "batch": 1,
+      "cell": "dev_preset_forward",
+      "dtype": "torch.bfloat16",
+      "estimated_bytes": 187337216,
+      "logits_bytes_theoretical": 33554432,
+      "parameter_count": 9782528,
+      "params_bytes_theoretical": 19565056,
+      "peak_allocated_bytes": 101523968,
+      "peak_reserved_bytes": 115343360,
+      "seq": 64
+    },
+    {
+      "batch": 1,
+      "cell": "dev_preset_forward",
+      "dtype": "torch.bfloat16",
+      "estimated_bytes": 1361742336,
+      "logits_bytes_theoretical": 268435456,
+      "parameter_count": 9782528,
+      "params_bytes_theoretical": 19565056,
+      "peak_allocated_bytes": 571551232,
+      "peak_reserved_bytes": 580911104,
+      "seq": 512
+    },
+    {
+      "batch": 1,
+      "cell": "dev_preset_forward",
+      "dtype": "torch.float16",
+      "estimated_bytes": 187337216,
+      "logits_bytes_theoretical": 33554432,
+      "parameter_count": 9782528,
+      "params_bytes_theoretical": 19565056,
+      "peak_allocated_bytes": 101523968,
+      "peak_reserved_bytes": 115343360,
+      "seq": 64
+    },
+    {
+      "batch": 1,
+      "cell": "dev_preset_forward",
+      "dtype": "torch.float16",
+      "estimated_bytes": 1361742336,
+      "logits_bytes_theoretical": 268435456,
+      "parameter_count": 9782528,
+      "params_bytes_theoretical": 19565056,
+      "peak_allocated_bytes": 571551232,
+      "peak_reserved_bytes": 580911104,
+      "seq": 512
+    },
+    {
+      "batch": 1,
+      "cell": "ref_50m_forward",
+      "dtype": "torch.float32",
+      "estimated_bytes": 526956544,
+      "logits_bytes_theoretical": 67108864,
+      "parameter_count": 47853056,
+      "params_bytes_theoretical": 191412224,
+      "peak_allocated_bytes": 391975424,
+      "peak_reserved_bytes": 404750336,
+      "seq": 64
+    },
+    {
+      "batch": 1,
+      "cell": "ref_50m_forward",
+      "dtype": "torch.float32",
+      "estimated_bytes": 862500864,
+      "logits_bytes_theoretical": 134217728,
+      "parameter_count": 47853056,
+      "params_bytes_theoretical": 191412224,
+      "peak_allocated_bytes": 526341632,
+      "peak_reserved_bytes": 532676608,
+      "seq": 128
+    },
+    {
+      "batch": 1,
+      "cell": "ref_50m_forward",
+      "dtype": "torch.bfloat16",
+      "estimated_bytes": 263478272,
+      "logits_bytes_theoretical": 33554432,
+      "parameter_count": 47853056,
+      "params_bytes_theoretical": 95706112,
+      "peak_allocated_bytes": 206018048,
+      "peak_reserved_bytes": 218103808,
+      "seq": 64
+    },
+    {
+      "batch": 1,
+      "cell": "ref_50m_forward",
+      "dtype": "torch.bfloat16",
+      "estimated_bytes": 431250432,
+      "logits_bytes_theoretical": 67108864,
+      "parameter_count": 47853056,
+      "params_bytes_theoretical": 95706112,
+      "peak_allocated_bytes": 273201664,
+      "peak_reserved_bytes": 283115520,
+      "seq": 128
+    }
+  ],
+  "run_id": "20261116T150144Z",
+  "saved_at_utc": "2026-11-16T15:01:48.180302+00:00",
+  "skipped": [],
+  "theoretical": {
+    "logits_bytes_per_cell_bf16": {
+      "B=1,T=1024": 536870912,
+      "B=1,T=128": 67108864,
+      "B=1,T=512": 268435456,
+      "B=2,T=1024": 1073741824,
+      "B=2,T=128": 134217728,
+      "B=2,T=512": 536870912,
+      "B=8,T=1024": 4294967296,
+      "B=8,T=128": 536870912,
+      "B=8,T=512": 2147483648
+    },
+    "logits_bytes_per_cell_fp32": {
+      "B=1,T=1024": 1073741824,
+      "B=1,T=128": 134217728,
+      "B=1,T=512": 536870912,
+      "B=2,T=1024": 2147483648,
+      "B=2,T=128": 268435456,
+      "B=2,T=512": 1073741824,
+      "B=8,T=1024": 8589934592,
+      "B=8,T=128": 1073741824,
+      "B=8,T=512": 4294967296
+    },
+    "note": "logits tensor alone; excludes parameters, activations, gradients, optimizer state"
+  }
+}
