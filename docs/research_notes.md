@@ -286,3 +286,13 @@ Correctness gates: shapes/finite, causality, cached-vs-uncached parity vs
 chunked-free sequential reference, backward, roundtrip, long-run stability.
 Measurement vs v0.4 dense: prefill/decode latency, state bytes/token vs KV
 bytes/token, peak memory, parity. Promotion only on repeatable win; else recorded.
+
+## Iteration 9 outcome — GDN prototype implemented & measured
+
+Candidate selected per matrix §Reference architectures. Outcome measured, not
+asserted: GDN wins memory (128 KiB const, 32×), loses latency everywhere at
+this scale (sequential recurrence; no chunkwise form; launch-bound small-model
+regime). Promoted? NO (registry v0.5-candidate, promoted=false). Default stays
+v0.4. Re-open with WY-chunkwise parallel form + training infra; on a
+memory-constrained long-context target (or ≥64k context) GDN may win there —
+unverifiable on this hardware.

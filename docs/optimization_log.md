@@ -130,3 +130,9 @@ See `docs/rnd_report.md` for the full loop. Summary:
   relative at all scales ≤ 1e5; bf16 SDPA == bf16 reference exactly).
 - Batch scaling B∈{1,2,4,8} measured (T=64/128, fp32/bf16); plateau re-verified
   with all benchmark axes (see rnd_report Iteration 8).
+
+
+## R&D loop additions (frontier 2026 references)
+- v0.5-candidate (GDN): implemented, tested, benchmarked — rejected for general
+  promotion (latency regression everywhere at dev scale; 32x memory win noted).
+  Opt-in only. No default changes; v0.4 remains best.

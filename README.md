@@ -158,6 +158,16 @@ model = load_pretrained("ckpt_dir/", map_location="cpu")
 - The tied matrix is serialized exactly once
 - Loading preserves stored dtypes (no silent casts)
 
+## Experimental attention types
+
+`attention_type="gated_delta"` (opt-in, default `"gqa"`) swaps GQA for a
+Gated DeltaNet mixer (Kimi-K3/Qwen3.8-Flash-Next "KDA" lineage, arXiv:2412.06464).
+Measured trade: **128 KiB O(1) state vs 4 MiB KV cache** at this dev scale —
+a 32× memory win — but decode latency regresses at every measured context
+(~1.0–1.1 vs 0.75–0.8 ms/token) and quality is unverifiable without training.
+Not promoted; opt-in retained for memory-constrained long-context targets.
+See `docs/rnd_report.md` and `versions/v0.5-candidate/`.
+
 ## Experimental decode path
 
 `generate(model, ids, max_new_tokens=N, experimental_cuda_graphs=True)` replays

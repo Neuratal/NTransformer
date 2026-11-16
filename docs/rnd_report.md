@@ -190,3 +190,22 @@ redesign; training-time decisions) that are explicitly out of scope.
 **Decision: v0.5 is not shipped; the loop is closed for this scope. v0.4
 remains best. Re-open only with (i) training infrastructure, (ii) paged-KV
 serving scope, or (iii) a materially different GPU/clock regime.**
+
+
+## Iteration 9 — Gated DeltaNet prototype (v0.5-candidate; NOT promoted)
+
+Research: KDA (Kimi K3), GDN (Qwen3.8-Flash-Next), Gated DeltaNet paper
+arXiv:2412.06464 (Eq. 10). Implemented opt-in `attention_type="gated_delta"`:
+L2-normalized q/k, sigmoid α/β gates, SiLU output gate, per-head fp32 state,
+DeltaNetCache (O(1) memory). 22 new tests pass (causality, cached≡uncached,
+backward, roundtrip, stability).
+
+Measured (fp32, CUDA): prefill T=128/512 GDN 21.1/81.9 ms vs dense 2.2/5.8 ms;
+decode at 64–1024 ctx GDN 1.02–1.10 vs dense 0.76–0.80 ms/token (loss at every
+point); state memory 128 KiB constant vs dense KV 4 MiB @2048 (32× win);
+params 10,048,912 vs 9,782,528. Default remains v0.4 GQA (`best_version`).
+Quality unverifiable without training (formula change). Frozen as
+`versions/v0.5-candidate` with registry entry (promoted=false) and raw A/B JSON.
+Promotion would require a training-time quality result or a long-context,
+memory-bound target where the 32× state advantage dominates the latency loss.
+Iteration 10 may revisit with the WY-chunkwise parallel form + training infra.
