@@ -32,7 +32,7 @@
     "seed": 42,
     "torch": "2.15.0+cu132"
   },
-  "neuratal_transformer_version": "0.1.0",
+  "neuratal_transformer_version": "0.3.0",
   "ntokenizer_manifest": {
     "base_byte_tokens": 256,
     "bos_token_id": 262137,
@@ -72,9 +72,9 @@
     "memory_total_mib": "8188 MiB"
   },
   "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
-  "run_id": "20261116T150250Z",
+  "run_id": "20261116T154642Z",
   "safetensors_version": "0.8.0",
-  "saved_at_utc": "2026-11-16T15:02:51.655364+00:00",
+  "saved_at_utc": "2026-11-16T15:46:42.699287+00:00",
   "sdpa_backends": {
     "cudnn[bfloat16]": "ok",
     "cudnn[float16]": "ok",
