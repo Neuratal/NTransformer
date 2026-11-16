@@ -23,6 +23,7 @@ from neuratal.config import NeuratalConfig
 from neuratal.model.block import NeuratalBlock
 from neuratal.model.cache import KVCache
 from neuratal.model.embeddings import FactorizedEmbedding
+from neuratal.model.gated_delta_net import DeltaNetCache
 from neuratal.model.normalization import RMSNorm
 from neuratal.model.output import OutputProjection
 
@@ -78,7 +79,9 @@ class NeuratalModel(nn.Module):
         cfg = self.config
         effective_use_cache = cfg.use_cache if use_cache is None else use_cache
         if past_key_values is None and effective_use_cache:
-            past_key_values = KVCache(cfg)
+            past_key_values = (
+                DeltaNetCache(cfg) if cfg.attention_type == "gated_delta" else KVCache(cfg)
+            )
 
         past_length = past_key_values.get_seq_length() if past_key_values is not None else 0
         if past_length + seq_len > cfg.max_position_embeddings:

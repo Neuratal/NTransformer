@@ -1,4 +1,5 @@
 from neuratal.model.attention import GQAAttention, reference_attention
+from neuratal.model.gated_delta_net import DeltaNetCache, GatedDeltaNetAttention
 from neuratal.model.block import NeuratalBlock
 from neuratal.model.cache import CacheOverflowError, KVCache
 from neuratal.model.embeddings import FactorizedEmbedding
@@ -10,6 +11,8 @@ from neuratal.model.positional import RotaryEmbedding, RotaryEmbeddingBase
 
 __all__ = [
     "GQAAttention",
+    "GatedDeltaNetAttention",
+    "DeltaNetCache",
     "NeuratalBlock",
     "KVCache",
     "CacheOverflowError",
