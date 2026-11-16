@@ -102,9 +102,9 @@ class TestSerializationAndValidation:
 
     def test_swa_window_bounds(self):
         with pytest.raises(ValueError, match="swa_window"):
-            NeuratalConfig(swa_window=0)
+            NeuratalConfig(swa_window=0, attention_type="sliding_window")
         with pytest.raises(ValueError, match="swa_window"):
-            NeuratalConfig(swa_window=999_999)
+            NeuratalConfig(swa_window=999_999, attention_type="sliding_window")
 
     def test_default_stays_gqa(self):
         assert NeuratalConfig().attention_type == "gqa"

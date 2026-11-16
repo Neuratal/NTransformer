@@ -194,7 +194,8 @@ class NeuratalConfig:
             raise ValueError(f"swa_window must be an integer, got {self.swa_window!r}")
         if self.swa_window < 1:
             raise ValueError(f"swa_window must be >= 1, got {self.swa_window}")
-        if self.swa_window > self.max_position_embeddings:
+        if self.attention_type == "sliding_window" and self.swa_window > self.max_position_embeddings:
+            # enforce only for the mode that consumes the window; a large default is fine otherwise
             raise ValueError(
                 f"swa_window ({self.swa_window}) cannot exceed max_position_embeddings "
                 f"({self.max_position_embeddings})"
