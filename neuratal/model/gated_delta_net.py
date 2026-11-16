@@ -122,6 +122,7 @@ class GatedDeltaNetAttention(nn.Module):
         self.hidden_size = config.hidden_size
         self.num_heads = config.num_attention_heads
         self.head_dim = config.head_dim
+        self._gdn_chunk_size = int(getattr(config, "gdn_chunk_size", 0) or 0)
 
         self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=False)
         self.k_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=False)
@@ -151,6 +152,8 @@ class GatedDeltaNetAttention(nn.Module):
         z = F.silu(F.linear(xf, self.gate_proj.weight.float())).view(batch, seq_len, self.num_heads, self.head_dim)
 
         d = self.head_dim
+        chunk_size = getattr(self, "_gdn_chunk_size", 0) or 0
+        use_chunkwise = chunk_size >= 2 and seq_len >= 2
         if past_key_values is not None:
             if layer_idx is None:
                 raise ValueError("layer_idx is required when past_key_values is provided")
@@ -170,25 +173,90 @@ class GatedDeltaNetAttention(nn.Module):
         else:
             state = torch.zeros(batch, self.num_heads, d, d, device=x.device, dtype=torch.float32)
 
-        outs = []
-        for t in range(seq_len):
-            kt, vt, qt = k[:, t], v[:, t], q[:, t]              # [B,H,d]
-            a = alpha[:, t].unsqueeze(-1).unsqueeze(-1)        # [B,H,1,1]
-            b = beta[:, t].unsqueeze(-1).unsqueeze(-1)          # [B,H,1,1]
-            Sk = torch.einsum("bhvd,bhd->bhv", state, kt)        # [B,H,d]
-            state = a * state - a * b * torch.einsum("bhv,bhd->bhvd", Sk, kt) \
-                + b * torch.einsum("bhv,bhd->bhvd", vt, kt)
-            o = torch.einsum("bhvd,bhd->bhv", state, qt)         # [B,H,d]
-            outs.append(o)
+        if use_chunkwise:
+            o_all, state = self._forward_chunkwise(q, k, v, alpha, beta, state, chunk_size)
+        else:
+            outs = []
+            for t in range(seq_len):
+                kt, vt, qt = k[:, t], v[:, t], q[:, t]              # [B,H,d]
+                a = alpha[:, t].unsqueeze(-1).unsqueeze(-1)        # [B,H,1,1]
+                b = beta[:, t].unsqueeze(-1).unsqueeze(-1)          # [B,H,1,1]
+                Sk = torch.einsum("bhvd,bhd->bhv", state, kt)        # [B,H,d]
+                state = a * state - a * b * torch.einsum("bhv,bhd->bhvd", Sk, kt) \
+                    + b * torch.einsum("bhv,bhd->bhvd", vt, kt)
+                o = torch.einsum("bhvd,bhd->bhv", state, qt)         # [B,H,d]
+                outs.append(o)
+            o_all = torch.stack(outs, dim=1)
 
         if past_key_values is not None:
             past_key_values.write_layer(layer_idx, state)
             past_key_values.mark_pending(seq_len)
 
-        o = torch.stack(outs, dim=1).to(x.dtype)                # [B,T,H,d]
+        o = o_all.to(x.dtype)                                    # [B,T,H,d]
         o = self.out_norm(o)
         o = (o * z.to(x.dtype)).reshape(batch, seq_len, self.num_heads * self.head_dim)
         return F.linear(o.float(), self.o_proj.weight.float()).to(x.dtype)
+
+    def _forward_chunkwise(self, q, k, v, alpha, beta, state, C):
+        """WY chunkwise parallel form of the gated delta rule (arXiv:2412.06464, §3.3, Eqs. 5–9).
+
+        Per chunk (tokens t0..t0+C-1, all batch×head lanes vectorized):
+            γ_r  = ∏_{i≤r} α_i   (within-chunk cumulative decay)
+            Γ_ij = γ_i/γ_j  (i ≥ j, else 0)
+            T    = (I + strictlyLower(diag(β)·(Γ ⊙ K Kᵀ)))⁻¹ diag(β)
+            W    = T·K ;  U = T·V
+            W←,K→,Q← = γ-scaled/rev-scaled copies
+            O    = Q← S_0ᵀ + (Q Kᵀ ⊙ M_causal)(U − W← S_0ᵀ)
+            S_1  = γ_C S_0 + (U − W← S_0ᵀ)ᵀ K→
+
+        Sequential and chunkwise are the same math with different summation
+        order; fp32 is used throughout (fp32 for bf16 models) and outputs are
+        compared against the sequential oracle in tests with justified fp32
+        tolerances (~1e-5 rel) — never bitwise-forced.
+        """
+        B, T, H, D = q.shape
+        qh, kh, vh = (t.transpose(1, 2) for t in (q, k, v))          # [B,H,T,D]
+        ah, bh = (t.transpose(1, 2) for t in (alpha, beta))          # [B,H,T]
+        state = state.float().clone()
+        outs: list[torch.Tensor] = []
+
+        for t0 in range(0, T, C):
+            Ci = min(C, T - t0)
+            qc, kc, vc = qh[:, :, t0:t0 + Ci], kh[:, :, t0:t0 + Ci], vh[:, :, t0:t0 + Ci]
+            ac, bc = ah[:, :, t0:t0 + Ci].float(), bh[:, :, t0:t0 + Ci].float()
+
+            gamma = torch.cumprod(ac, dim=-1)                          # [B,H,Ci]
+            gamma_C = gamma[..., -1:].unsqueeze(-1)                     # [B,H,1,1]
+            gamma_safe = gamma.clamp_min(1e-30)
+            Gamma = torch.tril(gamma_safe.unsqueeze(-1) * (1.0 / gamma_safe).unsqueeze(-2))       # [B,H,Ci,Ci]
+            G = torch.matmul(kc.float(), kc.float().transpose(-2, -1))   # [B,H,Ci,Ci]
+            LG = bc.unsqueeze(-1) * (Gamma * G)                          # diag(β) scales rows
+            Lmat = torch.tril(LG, diagonal=-1)                           # strictly below diagonal
+            I = torch.eye(Ci, device=Lmat.device, dtype=torch.float32).expand(B, H, Ci, Ci)
+            Tmat = torch.linalg.solve_triangular(
+                I + Lmat, torch.diag_embed(bc), upper=False, unitriangular=True
+            )                                                              # [B,H,Ci,Ci]
+            W = torch.matmul(Tmat, kc.float())                           # [B,H,Ci,D]
+            U = torch.matmul(Tmat, vc.float())                           # [B,H,Ci,D]
+
+            W_dec = gamma.unsqueeze(-1) * W                              # W← [B,H,Ci,D]
+            gammaC_over_gamma = gamma[..., -1:] / gamma_safe                # [B,H,Ci]
+            K_dec = gammaC_over_gamma.unsqueeze(-1) * kc.float()            # K→ [B,H,Ci,D]
+            Q_dec = gamma.unsqueeze(-1) * qc.float()                      # Q← [B,H,Ci,D]
+
+            WS = torch.matmul(W_dec, state.transpose(-2, -1))            # [B,H,Ci,D]
+            R = U - WS                                                   # Ũ − W←Sᵀ [B,H,Ci,D]
+
+            P = torch.matmul(qc.float(), kc.float().transpose(-2, -1))   # [B,H,Ci,Ci]
+            P = torch.tril(Gamma * P)                                    # γ-weighted causal QKᵀ (j ≤ i)
+            O_causal = torch.matmul(P, R)                                # [B,H,Ci,D]
+            O_state = torch.matmul(Q_dec, state.transpose(-2, -1))       # [B,H,Ci,D]
+            outs.append(O_state + O_causal)
+
+            state = gamma_C * state + torch.matmul(R.transpose(-2, -1), K_dec)
+
+        out = torch.cat(outs, dim=2).transpose(1, 2)                     # [B,T,H,D]
+        return out, state
 
     def extra_repr(self) -> str:
         return (f"hidden_size={self.hidden_size}, num_heads={self.num_heads}, "

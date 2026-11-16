@@ -57,6 +57,7 @@ class NeuratalConfig:
     attention_dropout: float = 0.0
     attention_implementation: str = "sdpa"  # "reference" is a test/debug path, not for training
     attention_type: str = "gqa"             # "gated_delta" is the experimental GDN prototype (opt-in)
+    gdn_chunk_size: int = 0                 # only for attention_type="gated_delta"; 0 -> sequential
 
     # --- Normalization / regularization ---
     rms_norm_eps: float = 1e-5
@@ -192,6 +193,16 @@ class NeuratalConfig:
             raise ValueError(
                 f"attention_type must be one of {_ALLOWED_ATTENTION_TYPE}, "
                 f"got {self.attention_type!r}"
+            )
+
+        if not isinstance(self.gdn_chunk_size, int) or isinstance(self.gdn_chunk_size, bool):
+            raise ValueError(f"gdn_chunk_size must be an integer, got {self.gdn_chunk_size!r}")
+        if self.gdn_chunk_size < 0:
+            raise ValueError(f"gdn_chunk_size must be >= 0, got {self.gdn_chunk_size}")
+        if self.gdn_chunk_size > self.max_position_embeddings:
+            raise ValueError(
+                f"gdn_chunk_size ({self.gdn_chunk_size}) cannot exceed max_position_embeddings "
+                f"({self.max_position_embeddings})"
             )
 
         # --- attention implementation ---
