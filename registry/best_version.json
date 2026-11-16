@@ -1,5 +1,5 @@
 {
-  "best": "v0.3",
+  "best": "v0.4",
   "promoted_at": "2026-11-16",
   "rule": "best is promoted only when all tests pass AND >=1 benchmark axis improves reproducibly without correctness regression. Ties or regressions keep the prior best.",
   "candidates": [
@@ -27,6 +27,31 @@
         "bf16 measurements dominated by clock-state run variance; no measurable bf16 win",
         "decode unchanged (Python launch-bound)",
         "checkpoint format changed (format_version=1, keys fused); v0.2 checkpoints load via transparent migration"
+      ],
+      "promoted": false
+    },
+    {
+      "name": "v0.4",
+      "commit": "a6b263c",
+      "note": "opt-in static-shape CUDA-graph decode (experimental_cuda_graphs), default eager path unchanged; bitwise-equal outputs verified",
+      "test_summary": "297 passed, 2 skipped in 22.35s"
+    },
+    {
+      "name": "v0.4",
+      "commit": "a6b263c",
+      "note": "Opt-in static-shape CUDA-graph decode via generate(experimental_cuda_graphs=True); default eager path unchanged; batch=1, CUDA, dropout=0; window=next_pow2(prompt+max_new+1).",
+      "evidence": {
+        "tests": "297 passed, 2 skipped (21 new)",
+        "bitwise_equivalence": "greedy ids equal eager over 16+ steps (fp32, bf16); prefill/step logits bitwise-equal",
+        "speedup_short_medium": "1.28x-1.42x end-to-end gen wall time (prompts 16-128, gen 32-64)",
+        "long_context_caveat": "0.94x at prompt=512 (window 1024 > eager's 544-wide attention); opt-in flagged experimental",
+        "default_path": "unchanged eager; all prior tests untouched and green"
+      },
+      "limitations": [
+        "opt-in only; best for short/medium prompts",
+        "window padding wasteful at long prompts (slight regression there)",
+        "batch=1 + CUDA + dropout=0 only",
+        "capture cost amortizes over >= ~16 tokens generated"
       ],
       "promoted": true
     }
