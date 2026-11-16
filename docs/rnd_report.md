@@ -106,3 +106,23 @@ SHA-256 untouched; zero training anywhere.
   `benchmark_attention.py`, `benchmark_memory.py`, `benchmark_end_to_end.py`,
   `benchmark_tokenizer.py`, `benchmark_environment.py`
 - Correctness gate: `python -m pytest tests/` → 276 passed, 2 skipped.
+
+## Context vs public models (honest, evidence-labeled)
+
+Nothing proprietary about GPT/Claude internals is claimed or implied; comparisons
+use only public architecture concepts. Evidence labels: M = measured here,
+P = public/general knowledge, E = estimate, U = unavailable.
+
+| Axis | Neuratal v0.3 (M) | Public reference points |
+|---|---|---|
+| Vocab | 262,144 (M) | GPT-2 50,257 (P); LLaMA-3 128,256 (P) — ours is larger; embedding-factorized |
+| Param count | 9.78M dev / 47.85M ref-sketch (M) | 50M-class frontier was small-custom territory in 2024-era literature (P) |
+| Prefill B=1 T=128 | 2.10-2.23 ms fp32 / ~1.1 ms bf16 (M) | Not directly comparable (hardware/build differ) |
+| Decode | 0.62-0.67 ms/tok (M) | Paged-attention servers achieve higher batch efficiency (P) — we are eager |
+| Cache equivalence | 0.00e+00 bitwise (M) | Correctness criteria all published decoders satisfy (P) |
+| Quality/BPC/MMLU | U (untrained) | Frontier models score high (P); we claim nothing |
+
+Our deliberate differentiations: full 262k vocab factorized tied embeddings,
+strict tokenizer identity pinning (SHA-256 manifests), public reproducible
+benchmarks, and zero approximations. We are a foundation, not a competitor to
+frontier chat models; nothing else should be inferred.
