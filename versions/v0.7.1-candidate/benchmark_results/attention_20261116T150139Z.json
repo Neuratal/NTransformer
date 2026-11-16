@@ -1,0 +1,114 @@
+{
+  "cases": [
+    {
+      "backend": "flash",
+      "dtype": "float32",
+      "error": "No available kernel. Aborting execution.",
+      "status": "unavailable"
+    },
+    {
+      "backend": "efficient",
+      "dtype": "float32",
+      "max_abs_vs_fp64": 1.7285346984863281e-06,
+      "median_s": 4.383049963507801e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "cudnn",
+      "dtype": "float32",
+      "error": "No available kernel. Aborting execution.",
+      "status": "unavailable"
+    },
+    {
+      "backend": "math",
+      "dtype": "float32",
+      "max_abs_vs_fp64": 4.172325134277344e-07,
+      "median_s": 0.00012493399844970554,
+      "status": "ok"
+    },
+    {
+      "backend": "flash",
+      "dtype": "bfloat16",
+      "max_abs_vs_fp64": 0.005034923553466797,
+      "median_s": 2.0785500964848325e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "efficient",
+      "dtype": "bfloat16",
+      "max_abs_vs_fp64": 0.005034923553466797,
+      "median_s": 2.560150096542202e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "cudnn",
+      "dtype": "bfloat16",
+      "max_abs_vs_fp64": 0.005034923553466797,
+      "median_s": 2.3095999495126307e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "math",
+      "dtype": "bfloat16",
+      "max_abs_vs_fp64": 0.005034923553466797,
+      "median_s": 0.00015199500012386125,
+      "status": "ok"
+    },
+    {
+      "backend": "flash",
+      "dtype": "float16",
+      "max_abs_vs_fp64": 0.0006211996078491211,
+      "median_s": 2.2463998902821913e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "efficient",
+      "dtype": "float16",
+      "max_abs_vs_fp64": 0.0006211996078491211,
+      "median_s": 2.771400068013463e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "cudnn",
+      "dtype": "float16",
+      "max_abs_vs_fp64": 0.0006211996078491211,
+      "median_s": 2.422099896648433e-05,
+      "status": "ok"
+    },
+    {
+      "backend": "math",
+      "dtype": "float16",
+      "max_abs_vs_fp64": 0.0005064010620117188,
+      "median_s": 0.00015458800044143572,
+      "status": "ok"
+    }
+  ],
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 8037138432,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "run_id": "20261116T150139Z",
+  "saved_at_utc": "2026-11-16T15:01:39.586265+00:00",
+  "shape": {
+    "batch": 1,
+    "head_dim": 64,
+    "heads": 4,
+    "kv_heads": 2,
+    "seq": 256
+  }
+}

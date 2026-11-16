@@ -106,6 +106,19 @@
         "quality vs dense unmeasurable without training",
         "flash kernel unavailable under explicit masks on this build"
       ]
+    },
+    {
+      "name": "v0.7.1-candidate",
+      "commit": "0b9945f",
+      "branch": "cand/v0.7-sliding-window",
+      "note": "SWA fix on top of v0.7-candidate: swa_window bounds check scoped to sliding_window mode (a large default no longer violates small max_position_embeddings); SWA still rejected on 3-seed evidence (wash @1024, 20-40% slower @2048). Does NOT overwrite v0.7-candidate; frozen snapshot records the corrected source + tests.",
+      "test_summary": "332 passed, 2 skipped",
+      "promoted": false,
+      "evidence": {
+        "correctness": "13 SWA tests pass; full suite 332 passed",
+        "swa_window_fix": "validation now gated to sliding_window attention_type only (master crashed test_cache at max_position_embeddings=64 with default swa_window=512)",
+        "status": "supersedes v0.7-candidate only for the bounds-check scoping; all other evidence carried over"
+      }
     }
   ]
 }
