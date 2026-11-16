@@ -148,8 +148,8 @@
       "seq": 128
     }
   ],
-  "run_id": "20261116T160003Z",
-  "saved_at_utc": "2026-11-16T16:00:08.006584+00:00",
+  "run_id": "20261116T162820Z",
+  "saved_at_utc": "2026-11-16T16:28:24.444741+00:00",
   "skipped": [],
   "theoretical": {
     "logits_bytes_per_cell_bf16": {

@@ -2,28 +2,49 @@
   "cells": [
     {
       "bitwise_equal_greedy_16": true,
-      "eager_median_s": 0.03968576999977813,
-      "eager_min_s": 0.03961266400074237,
-      "graph_median_s": 0.030690801999298856,
-      "graph_min_s": 0.03068458300185739,
+      "eager_median_s": 0.020309210998675553,
+      "eager_min_s": 0.020079497000551783,
+      "graph_median_s": 0.01924202900045202,
+      "graph_min_s": 0.01893701800145209,
       "prompt_len": 16,
-      "repeats": 3,
-      "speedup": 1.2930835108409604
+      "repeats": 5,
+      "speedup": 1.055460991052371
     },
     {
       "bitwise_equal_greedy_16": true,
-      "eager_median_s": 0.03946337500019581,
-      "eager_min_s": 0.0390969549989677,
-      "graph_median_s": 0.03152901999783353,
-      "graph_min_s": 0.03147219499805942,
+      "eager_median_s": 0.0229166940007417,
+      "eager_min_s": 0.022253180002735462,
+      "graph_median_s": 0.02903795099700801,
+      "graph_min_s": 0.026378665999800432,
       "prompt_len": 64,
-      "repeats": 3,
-      "speedup": 1.2516524459976073
+      "repeats": 5,
+      "speedup": 0.7891980395966289
+    },
+    {
+      "bitwise_equal_greedy_16": true,
+      "eager_median_s": 0.02227650100030587,
+      "eager_min_s": 0.021980949000862893,
+      "graph_median_s": 0.02984337900124956,
+      "graph_min_s": 0.02693594800075516,
+      "prompt_len": 128,
+      "repeats": 5,
+      "speedup": 0.7464470092134387
+    },
+    {
+      "bitwise_equal_greedy_16": true,
+      "eager_median_s": 0.022719116997905076,
+      "eager_min_s": 0.022292302001005737,
+      "graph_median_s": 0.03847191300155828,
+      "graph_min_s": 0.038164325000252575,
+      "prompt_len": 512,
+      "repeats": 5,
+      "speedup": 0.5905377514496056
     }
   ],
   "config": {
     "attention_dropout": 0.0,
     "attention_implementation": "sdpa",
+    "attention_type": "gqa",
     "bos_token_id": null,
     "cache_capacity": 2048,
     "device": "cuda",
@@ -48,7 +69,7 @@
     "use_cache": true,
     "vocab_size": 262144
   },
-  "gen_len": 64,
+  "gen_len": 32,
   "machine": {
     "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
     "cpu_cores": 20,
@@ -68,6 +89,6 @@
     "seed": 42,
     "torch": "2.15.0+cu132"
   },
-  "run_id": "20261116T160649Z",
-  "saved_at_utc": "2026-11-16T16:06:50.574400+00:00"
+  "run_id": "20261116T162817Z",
+  "saved_at_utc": "2026-11-16T16:28:18.696347+00:00"
 }
