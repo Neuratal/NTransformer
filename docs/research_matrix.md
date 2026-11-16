@@ -139,3 +139,15 @@ bf16 decode GEMV check (bottleneck #4):
   (launch-bound; upcast overheads eat the 88 us saving)
 - verdict: not a viable architecture lever at this scale; bf16 stays a config
   option; bottleneck #4 fix remains launch-overhead reduction (v0.4 graphs).
+
+## Iteration 9b (approved experiment) — WY chunkwise GDN
+
+- Faithful implementation verified vs sequential oracle (max abs fp32 diff
+  <= 1.3e-03 through T=512; bf16 <= 2e-03; end-to-end logits ~5e-07).
+- 36 dedicated tests; 355 total pass; bitwise equality never forced.
+- 5-13x prefill gain vs sequential GDN; still loses to v0.4 dense GQA on prefill
+  and decode at every measured T (128/512/1024/2048, fp32 and bf16).
+- Memory axis stays the GDN's only win (constant 128 KiB vs growing KV);
+  gap only grows with context length. Not promoted (promotion rule: GQA must be
+  beaten in a real use case, or memory honored separately — here both still
+  favor GQA at <=2048 on this machine).

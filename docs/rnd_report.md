@@ -225,3 +225,16 @@ SWA implemented + tested + benchmarked (3 seeds): wash at T=1024; 20-40% slower
 T=2048 (mask disables flash path; attention share 7.5%). Rejected; branch
 cand/v0.7-sliding-window; frozen as versions/v0.7-candidate. bf16 GEMV check:
 2.5x micro speedup, zero end-to-end decode gain (launch-bound) — not adopted.
+
+## Iteration 9b — v0.6 WY chunkwise GDN (arXiv:2412.06464 §3.3) — IMPLEMENTED, NOT PROMOTED
+
+Delivered on branch cand/v0.6-wy-chunkwise. Faithful Eq.6-9 closed form:
+T = (I + tril(diag(beta)(gamma-ratio-weighted K K^T)))^-1 diag(beta); W = T K;
+U = T V; gamma-weighted causal mask for the intra-chunk term (derived to match
+the recurrent oracle exactly: max abs diff 1e-07 @ T<=16 fp32; <5e-04 through
+T=512). 5-13x prefill speedup vs sequential GDN (23.6->3.13 ms @ T=128 fp32;
+348.3->34.1 ms @ T=2048). STILL slower than dense GQA everywhere at this
+scale: fp32 prefill 3.13/8.91/15.69/34.08 vs GQA 1.53/5.28/8.90/15.42;
+decode 1.09-1.26 vs 0.78-0.90 ms/tok (bf16: same story). Wins only on constant
+state memory. NOT promoted; archived as v0.6.1-candidate (naming collision with
+MLA v0.6-candidate documented); best stays v0.4. All raw JSON preserved.

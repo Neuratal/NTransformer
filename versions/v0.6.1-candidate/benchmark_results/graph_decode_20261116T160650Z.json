@@ -1,0 +1,73 @@
+{
+  "cells": [
+    {
+      "bitwise_equal_greedy_16": true,
+      "eager_median_s": 0.03968576999977813,
+      "eager_min_s": 0.03961266400074237,
+      "graph_median_s": 0.030690801999298856,
+      "graph_min_s": 0.03068458300185739,
+      "prompt_len": 16,
+      "repeats": 3,
+      "speedup": 1.2930835108409604
+    },
+    {
+      "bitwise_equal_greedy_16": true,
+      "eager_median_s": 0.03946337500019581,
+      "eager_min_s": 0.0390969549989677,
+      "graph_median_s": 0.03152901999783353,
+      "graph_min_s": 0.03147219499805942,
+      "prompt_len": 64,
+      "repeats": 3,
+      "speedup": 1.2516524459976073
+    }
+  ],
+  "config": {
+    "attention_dropout": 0.0,
+    "attention_implementation": "sdpa",
+    "bos_token_id": null,
+    "cache_capacity": 2048,
+    "device": "cuda",
+    "dtype": "float32",
+    "embedding_size": 32,
+    "eos_token_id": null,
+    "fp32_logits": false,
+    "hidden_dropout": 0.0,
+    "hidden_size": 256,
+    "intermediate_size": 640,
+    "logits_chunk_size": null,
+    "max_position_embeddings": 2048,
+    "model_dtype": "float32",
+    "num_attention_heads": 4,
+    "num_hidden_layers": 2,
+    "num_key_value_heads": 2,
+    "pad_token_id": null,
+    "rms_norm_eps": 1e-05,
+    "rope_theta": 10000.0,
+    "rotary_dim": 64,
+    "tie_word_embeddings": true,
+    "use_cache": true,
+    "vocab_size": 262144
+  },
+  "gen_len": 64,
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 7988903936,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "run_id": "20261116T160649Z",
+  "saved_at_utc": "2026-11-16T16:06:50.574400+00:00"
+}

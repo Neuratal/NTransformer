@@ -119,6 +119,27 @@
         "swa_window_fix": "validation now gated to sliding_window attention_type only (master crashed test_cache at max_position_embeddings=64 with default swa_window=512)",
         "status": "supersedes v0.7-candidate only for the bounds-check scoping; all other evidence carried over"
       }
+    },
+    {
+      "name": "v0.6.1-candidate",
+      "commit": "f17a75f",
+      "branch": "cand/v0.6-wy-chunkwise",
+      "note": "WY chunkwise parallel form of the gated delta rule (arXiv:2412.06464 \u00a73.3, Eqs 5-9). 5-13x faster prefill vs sequential GDN; STILL slower than dense GQA at every measured context (fp32: 3.13/8.91/15.69/34.08 ms vs 1.53/5.28/8.90/15.42; bf16: 2.60/6.92/14.27/26.30 vs 1.22/2.32/5.38/9.84). Decode also slower (1.09-1.26 vs 0.78-0.90 ms/tok). Wins only on constant state memory (128 KiB vs growing KV). NOT promoted; archived as v0.6.1-candidate (name collision with MLA v0.6-candidate documented).",
+      "test_summary": "355 passed, 2 skipped",
+      "promoted": false,
+      "evidence": {
+        "correctness": "chunkwise vs sequential max abs diff: T<=512 fp32 <=1.3e-03 (fp32 reduction order), T=4 logits end-to-end 5.1e-07; bf16 <=2e-03; T=2048 finite verified",
+        "prefill_fp32": "T=128/512/1024/2048: GDN-chunkwise 3.13/8.91/15.69/34.08 ms vs GQA 1.53/5.28/8.90/15.42 ms",
+        "decode_fp32": "T=128/512/1024/2048: GDN 1.15/1.09/1.09/1.13 vs GQA 0.78/0.79/0.78/0.90 ms/tok",
+        "gdn_chunkwise_vs_sequential": "5-13x prefill speedup (23.6/86.6/172.1/348.3 -> 3.13/8.91/15.69/34.08)",
+        "state_memory": "constant 128 KiB/layer-pair vs 4,096 KiB dense KV at cap=2048 (ratio ~32x)"
+      },
+      "limitations": [
+        "slower than v0.4 GQA at every latency axis measured on this hardware (fp32 and bf16)",
+        "decode slower at every context (recurrence re-serializes T=1)",
+        "chunk sizes >64 underflow cumulative decay products (tested at C<=64 only)",
+        "memory win real but tiny at <=2048 context on 8GB GPU; grows with context length"
+      ]
     }
   ]
 }

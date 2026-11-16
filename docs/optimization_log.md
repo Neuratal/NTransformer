@@ -146,3 +146,8 @@ See `docs/rnd_report.md` for the full loop. Summary:
 - SWA (v0.7-candidate): rejected on 3-seed timings (wash T=1024, 20-40% slower T=2048)
 - bf16 decode GEMV: micro 2.5x faster (229->287 GB/s), no end-to-end latency win
   at launch-bound scale — config-level recommendation only
+
+## v0.6.1 WY chunkwise GDN
+- faithful Eq.6-9 form; verified vs oracle; 5-13x over sequential GDN
+- dense GQA still wins everywhere at dev scale (prefill and decode); memory is
+  the only GDN axis (constant state); NOT promoted; archived
