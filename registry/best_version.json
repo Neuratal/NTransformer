@@ -50,6 +50,13 @@
         "capture cost amortizes over >= ~16 tokens generated"
       ],
       "promoted": true
+    },
+    {
+      "name": "v0.5-candidate",
+      "commit": "2b1509d",
+      "note": "GDN mixer opt-in (attention_type=gated_delta): memory win 32x vs GQA KV cache (128 KiB O(1) state vs 4 MiB growing); latency regression at all measured contexts (GDN ~1.0-1.1 vs dense 0.75-0.8 ms/tok); NOT promoted for this hardware/scale; opt-in retained for memory-constrained long-context targets",
+      "test_summary": "319 passed, 2 skipped, 1 warning in 22.86s",
+      "promoted": false
     }
   ]
 }

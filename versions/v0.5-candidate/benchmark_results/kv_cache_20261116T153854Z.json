@@ -1,0 +1,72 @@
+{
+  "cells": [
+    {
+      "cache_buffer_bytes_theoretical": 4194304,
+      "cache_length_after_decode": 80,
+      "cached_prefill_median_s": 0.0011947304992645513,
+      "cached_vs_uncached_max_abs_diff": 0.0,
+      "decode_ms_per_token": 0.6203657812875463,
+      "decode_tokens_per_second": 1611.952222646028,
+      "seq": 64,
+      "uncached_forward_median_s": 0.0010690244980651187
+    },
+    {
+      "cache_buffer_bytes_theoretical": 4194304,
+      "cache_length_after_decode": 528,
+      "cached_prefill_median_s": 0.003434127500440809,
+      "cached_vs_uncached_max_abs_diff": 0.0,
+      "decode_ms_per_token": 0.6108430625317851,
+      "decode_tokens_per_second": 1637.0817012396947,
+      "seq": 512,
+      "uncached_forward_median_s": 0.0032943565001914976
+    }
+  ],
+  "config": {
+    "attention_dropout": 0.0,
+    "attention_implementation": "sdpa",
+    "bos_token_id": null,
+    "cache_capacity": 2048,
+    "device": "cuda",
+    "dtype": "float32",
+    "embedding_size": 32,
+    "eos_token_id": null,
+    "fp32_logits": false,
+    "hidden_dropout": 0.0,
+    "hidden_size": 256,
+    "intermediate_size": 640,
+    "logits_chunk_size": null,
+    "max_position_embeddings": 2048,
+    "num_attention_heads": 4,
+    "num_hidden_layers": 2,
+    "num_key_value_heads": 2,
+    "pad_token_id": null,
+    "rms_norm_eps": 1e-05,
+    "rope_theta": 10000.0,
+    "rotary_dim": 64,
+    "tie_word_embeddings": true,
+    "use_cache": true,
+    "vocab_size": 262144
+  },
+  "decode_tokens_per_call": 16,
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 7988903936,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "run_id": "20261116T153853Z",
+  "saved_at_utc": "2026-11-16T15:38:54.549642+00:00"
+}
