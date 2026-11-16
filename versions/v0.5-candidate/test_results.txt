@@ -9,4 +9,4 @@ tests/test_gated_delta_net.py::TestForward::test_backward_pass[cuda]
     warn_once(FP_FUSION_DEFAULT_WARNING)
 
 -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-319 passed, 2 skipped, 1 warning in 22.86s
+319 passed, 2 skipped, 1 warning in 23.21s
