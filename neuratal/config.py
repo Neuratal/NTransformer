@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 _ALLOWED_DTYPES = ("float32", "bfloat16", "float16")
 _ALLOWED_ATTENTION_IMPL = ("sdpa", "reference")
-_ALLOWED_ATTENTION_TYPE = ("gqa", "gated_delta")
+_ALLOWED_ATTENTION_TYPE = ("gqa", "gated_delta", "mla", "sliding_window")
 
 
 def _round_to_multiple(value: float, multiple: int) -> int:
@@ -56,7 +56,9 @@ class NeuratalConfig:
     rotary_dim: Optional[int] = None  # None => head_dim; must be even and <= head_dim
     attention_dropout: float = 0.0
     attention_implementation: str = "sdpa"  # "reference" is a test/debug path, not for training
-    attention_type: str = "gqa"             # "gated_delta" is the experimental GDN prototype (opt-in)
+    attention_type: str = "gqa"             # experimental prototypes are opt-in; default is v0.4
+    mla_latent_dim: Optional[int] = None    # only for attention_type="mla"; None -> 64
+    swa_window: int = 512                   # only for attention_type="sliding_window"
 
     # --- Normalization / regularization ---
     rms_norm_eps: float = 1e-5
@@ -186,6 +188,16 @@ class NeuratalConfig:
                 "tie_word_embeddings=False is not supported in this architecture: V1 mandates "
                 "factorized tied embeddings with a single shared matrix (no untied path is "
                 "silently provided). Set tie_word_embeddings=True."
+            )
+
+        if not isinstance(self.swa_window, int) or isinstance(self.swa_window, bool):
+            raise ValueError(f"swa_window must be an integer, got {self.swa_window!r}")
+        if self.swa_window < 1:
+            raise ValueError(f"swa_window must be >= 1, got {self.swa_window}")
+        if self.swa_window > self.max_position_embeddings:
+            raise ValueError(
+                f"swa_window ({self.swa_window}) cannot exceed max_position_embeddings "
+                f"({self.max_position_embeddings})"
             )
 
         if self.attention_type not in _ALLOWED_ATTENTION_TYPE:

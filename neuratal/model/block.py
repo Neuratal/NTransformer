@@ -17,6 +17,7 @@ from torch import nn
 from neuratal.config import NeuratalConfig
 from neuratal.model.attention import GQAAttention
 from neuratal.model.gated_delta_net import GatedDeltaNetAttention
+from neuratal.model.sliding_window import SlidingWindowAttention
 from neuratal.model.mlp import SwiGLU
 from neuratal.model.normalization import RMSNorm
 
@@ -29,6 +30,8 @@ class NeuratalBlock(nn.Module):
         self.attn = (
             GatedDeltaNetAttention(config)
             if config.attention_type == "gated_delta"
+            else SlidingWindowAttention(config)
+            if config.attention_type == "sliding_window"
             else GQAAttention(config)
         )
         self.mlp_norm = RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
