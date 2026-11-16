@@ -33,8 +33,7 @@ class TestBlock:
         cfg = NeuratalConfig()
         block = NeuratalBlock(cfg, layer_idx=0).to(device).eval()
         with torch.no_grad():
-            block.mlp.gate_proj.weight.zero_()
-            block.mlp.up_proj.weight.zero_()
+            block.mlp.gate_up_proj.weight.zero_()
             block.mlp.down_proj.weight.zero_()
         hidden = torch.randn(1, 4, 256, device=device)
         out = block(hidden, torch.arange(4, device=device))

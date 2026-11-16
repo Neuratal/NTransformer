@@ -11,7 +11,7 @@ from neuratal.model.generation import generate
 from neuratal.model.model import CausalLMOutput, NeuratalModel
 from neuratal.serialization.checkpoint import load_pretrained, save_pretrained
 
-__version__ = "0.1.0"
+__version__ = "0.3.0"
 
 __all__ = [
     "NeuratalConfig",

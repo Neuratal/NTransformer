@@ -15,21 +15,22 @@ class TestMath:
         torch.manual_seed(7)
         mlp = SwiGLU(cfg)
         x = torch.randn(2, 4, 256)
-        expected = mlp.down_proj(F.silu(mlp.gate_proj(x)) * mlp.up_proj(x))
+        gate, up = mlp.gate_up_proj(x).chunk(2, dim=-1)
+        expected = mlp.down_proj(F.silu(gate) * up)
         assert torch.allclose(mlp(x), expected, atol=0, rtol=0)
 
     def test_silu_gating_not_relu(self):
         cfg = NeuratalConfig(hidden_size=256, intermediate_size=64)
         mlp = SwiGLU(cfg)
         x = torch.randn(1, 1, 256)  # random negatives exist with prob ~1
-        wrong = mlp.down_proj(F.relu(mlp.gate_proj(x)) * mlp.up_proj(x))
+        gate, up = mlp.gate_up_proj(x).chunk(2, dim=-1)
+        wrong = mlp.down_proj(F.relu(gate) * up)
         assert not torch.allclose(mlp(x), wrong, atol=1e-6)
 
     def test_shapes_and_intermediate_size(self):
         cfg = NeuratalConfig(hidden_size=256, intermediate_size=640)
         mlp = SwiGLU(cfg)
-        assert mlp.gate_proj.weight.shape == (640, 256)
-        assert mlp.up_proj.weight.shape == (640, 256)
+        assert mlp.gate_up_proj.weight.shape == (1280, 256)
         assert mlp.down_proj.weight.shape == (256, 640)
         out = mlp(torch.randn(3, 5, 256))
         assert out.shape == (3, 5, 256)

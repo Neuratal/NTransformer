@@ -105,6 +105,8 @@ def load_pretrained(
     config = NeuratalConfig.from_dict(payload["config"])
     model = NeuratalModel(config)
 
+    state_dict = _migrate_legacy_state_dict(state_dict)
+
     model_state = model.state_dict()
     missing = sorted(k for k in model_state if k not in state_dict)
     unexpected = sorted(k for k in state_dict if k not in model_state)
@@ -130,6 +132,49 @@ def load_pretrained(
 
 
 # ---------------------------------------------------------------------
+_LEGACY_PROJECTION_GROUPS = (
+    (r"(layers\.\d+)\.attn\.(q_proj|k_proj|v_proj)\.weight", ("q_proj", "k_proj", "v_proj"), "qkv_proj"),
+    (r"(layers\.\d+)\.mlp\.(gate_proj|up_proj)\.weight", ("gate_proj", "up_proj"), "gate_up_proj"),
+)
+
+
+def _migrate_legacy_state_dict(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """Coalesce pre-v0.3 split projection weights into fused tensors.
+
+    v0.3 fuses Q/K/V into ``qkv_proj`` and gate/up into ``gate_up_proj``
+    (mathematically identical — one GEMM instead of several). Checkpoints
+    written by v0.2 carry the split keys; they are concatenated deterministically
+    (weights are row concatenations) and a warning is emitted. New checkpoints
+    contain only the fused keys and pass through unchanged.
+    """
+    import re
+
+    migrated = dict(state_dict)
+    changed = False
+    for pattern, names, fused in _LEGACY_PROJECTION_GROUPS:
+        groups: dict[str, dict[str, str]] = {}
+        for key in list(migrated):
+            m = re.fullmatch(pattern, key)
+            if m:
+                groups.setdefault(m.group(1), {})[m.group(2)] = key
+        for prefix, parts in groups.items():
+            if set(parts) != set(names):
+                continue  # partial legacy group: leave untouched; strict checks will report
+            ordered = [parts[n] for n in names]
+            stacked = torch.cat([migrated.pop(k) for k in ordered], dim=0)
+            fused_key = f"{prefix}.{'attn' if fused == 'qkv_proj' else 'mlp'}.{fused}.weight"
+            migrated[fused_key] = stacked
+            changed = True
+    if changed:
+        warnings.warn(
+            "migrated legacy split projection weights into fused qkv_proj/gate_up_proj "
+            "(mathematically identical row concatenation)",
+            UserWarning,
+            stacklevel=2,
+        )
+    return migrated
+
+
 def _check_config_payload(payload: object) -> None:
     if not isinstance(payload, dict):
         raise ValueError(f"{CONFIG_FILENAME} must contain a JSON object, got {type(payload).__name__}")

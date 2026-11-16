@@ -107,7 +107,7 @@ class TestFailureModes:
         model = make_model()
         save_pretrained(model, tmp_path)
         sd = {k: v for k, v in load_file(str(tmp_path / "model.safetensors")).items()
-              if k != "layers.0.mlp.gate_proj.weight"}
+              if k != "layers.0.mlp.gate_up_proj.weight"}
         save_file(sd, str(tmp_path / "model.safetensors"))
         with pytest.raises(ValueError, match="missing keys"):
             load_pretrained(tmp_path)
@@ -116,7 +116,7 @@ class TestFailureModes:
         model = make_model()
         save_pretrained(model, tmp_path)
         sd = load_file(str(tmp_path / "model.safetensors"))
-        sd["layers.0.mlp.gate_proj.bias"] = torch.zeros(640)
+        sd["layers.0.mlp.gate_up_proj.bias"] = torch.zeros(1280)
         save_file(sd, str(tmp_path / "model.safetensors"))
         with pytest.raises(ValueError, match="unexpected keys"):
             load_pretrained(tmp_path)
@@ -134,7 +134,7 @@ class TestFailureModes:
         model = make_model()
         save_pretrained(model, tmp_path)
         sd = load_file(str(tmp_path / "model.safetensors"))
-        sd["layers.0.mlp.gate_proj.weight"] = torch.zeros(641, 256)
+        sd["layers.0.mlp.gate_up_proj.weight"] = torch.zeros(1281, 256)
         save_file(sd, str(tmp_path / "model.safetensors"))
         with pytest.raises(ValueError, match="shape mismatch"):
             load_pretrained(tmp_path)
