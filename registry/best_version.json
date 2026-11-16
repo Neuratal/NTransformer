@@ -33,13 +33,8 @@
     {
       "name": "v0.4",
       "commit": "a6b263c",
-      "note": "opt-in static-shape CUDA-graph decode (experimental_cuda_graphs), default eager path unchanged; bitwise-equal outputs verified",
-      "test_summary": "297 passed, 2 skipped in 22.35s"
-    },
-    {
-      "name": "v0.4",
-      "commit": "a6b263c",
       "note": "Opt-in static-shape CUDA-graph decode via generate(experimental_cuda_graphs=True); default eager path unchanged; batch=1, CUDA, dropout=0; window=next_pow2(prompt+max_new+1).",
+      "test_summary": "297 passed, 2 skipped in 22.35s",
       "evidence": {
         "tests": "297 passed, 2 skipped (21 new)",
         "bitwise_equivalence": "greedy ids equal eager over 16+ steps (fp32, bf16); prefill/step logits bitwise-equal",

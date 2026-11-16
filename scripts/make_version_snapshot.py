@@ -101,7 +101,8 @@ def main() -> None:
         "commit": commit,
         "note": args.note,
         "test_summary": test_out.strip().splitlines()[-1] if test_out.strip() else "unknown",
-    })
+        "promoted": False,
+    }) if not any(c.get("name") == args.name for c in registry["candidates"]) else None
     registry_path.write_text(json.dumps(registry, indent=2))
     print(f"snapshot -> {dest}")
     print(test_out.strip().splitlines()[-1])
