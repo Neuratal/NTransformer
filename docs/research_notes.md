@@ -99,15 +99,16 @@ on this machine, E = estimate, U = unavailable.
 - Claim: draft+verify accelerates autoregressive decode ~2–3x without quality loss.
 - Judgment: **not applicable** — requires a trained draft model; we train nothing.
 
-## Net decision for v0.4
+## Net decision for v0.4 — IMPLEMENTED AND PROMOTED
 
-Implement **static-shape CUDA-graph decode** as an opt-in experiment, gated by
-correctness gates identical to the eager path (cached≡uncached ≤ 1e-5, eos
-handling, batch handling excluded or handled via B=1 only). The candidate is
-bounded: mask algebra is exact; the only new machinery is a capture-safe step
-and a fixed-window SDPA with an additive −inf mask beyond `cur_len`. If it is
-not measurably faster (or breaks correctness), it is recorded as an honest
-rejection — the loop's rules explicitly allow that outcome.
+v0.4 ships `generate(..., experimental_cuda_graphs=True)`: one CUDA graph
+capture per generation call (window = next_pow2(prompt + max_new + 1)), replay
+per token, batch=1, CUDA, dropout=0. Correctness gate (bitwise id match vs
+eager over 16+ steps, fp32 and bf16) passed before any timing was recorded.
+Measured end-to-end: 1.28–1.42× at short/medium prompts (16–128 tokens,
+gen 32–64); 0.94× at prompt=512 (window padding > eager's growing window) —
+documented; eager remains default. See docs/rnd_report.md, registry, and
+versions/v0.4/.
 
 ## Rejected/deferred (unchanged)
 

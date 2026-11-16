@@ -158,6 +158,13 @@ model = load_pretrained("ckpt_dir/", map_location="cpu")
 - The tied matrix is serialized exactly once
 - Loading preserves stored dtypes (no silent casts)
 
+## Experimental decode path
+
+`generate(model, ids, max_new_tokens=N, experimental_cuda_graphs=True)` replays
+the decode step as a CUDA graph (CUDA, batch=1, dropout=0). Bitwise-identical
+logits to the eager path; measured 1.28–1.42× at short/medium prompts. Default
+stays eager. See `docs/rnd_report.md` and `versions/v0.4/`.
+
 ## Testing
 
 ```bash
@@ -166,7 +173,7 @@ python -m pytest tests/ -k cuda  # CUDA-only subset
 python -m pytest tests/test_ntokenizer_integration.py  # integration suite
 ```
 
-270 collected at time of writing (268 passed, 2 skipped — the two CUDA-on-CPU
+299 collected at time of writing (297 passed, 2 skipped — the two CUDA-on-CPU
 probes); CUDA results measured on an RTX 4060 Laptop GPU (torch 2.15.0+cu132)
 — see `docs/final_report.md`, `docs/ntokenizer_compatibility.md`, and
 `docs/benchmark_results.md`. Tests use the full 262,144-token vocabulary.

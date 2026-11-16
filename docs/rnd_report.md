@@ -39,7 +39,27 @@ unchanged 9,782,528).
 **Decision:** promoted. Preserves all NTokenizer semantics, checkpoint format
 v1, parameter count, and every correctness invariant.
 
-## Iteration 2 — CUDA graphs for the decode step (rejected, analysis)
+## Iteration 5 — RESEARCH PASS (performed; see docs/research_notes.md)
+
+Gathered and judged: FlashAttention/2 (arXiv:2205.14135 / 2307.08691), RMSNorm
+(arXiv:1910.07467), RoPE/RoFormer (arXiv:2104.09864), YaRN (arXiv:2309.00071),
+SwiGLU (arXiv:2002.05202), GQA (arXiv:2305.13245), PagedAttention/vLLM
+(arXiv:2309.06180), Pope et al. (arXiv:2211.05102), speculative decoding
+(arXiv:2211.17192), CUDA-graph decode sources (NVIDIA llama.cpp blog;
+arXiv:2604.23467, 2611.00495, 2611.14904). Result: decode is launch-bound;
+static-shape graphs are the applicable fix; paged KV is the long-term answer.
+
+## Iteration 6 — v0.4: static-shape CUDA-graph decode (PROMOTED, opt-in)
+
+- `experimental_cuda_graphs=True`: one graph capture per generation call
+  (window = pow2(prompt+max_new+1)); replay per token.
+- Bitwise vs eager (16+ steps fp32/bf16; prefill and per-step logits equal).
+- Measured: 1.28–1.42× at short/medium prompts (16–128 / gen 32–64);
+  0.94× at prompt=512 (window padding penalty) — documented; default stays
+  eager. Suitable for the dev-benchmark workload class.
+- 21 new tests; 297 total pass; default path unchanged.
+
+## Iteration 2 — CUDA graphs for the decode step (rejected v0.3-era candidate, superseded by v0.4)
 
 **Hypothesis:** replay the decode step as a CUDA graph to erase ~50 Python
 launch ops/token (measured: ~305 µs GPU vs ~620–670 µs wall/token).
