@@ -124,3 +124,9 @@ See `docs/rnd_report.md` for the full loop. Summary:
 - torch.compile reduce-overhead for prefill: measured 0.946 ms (vs 1.003 default,
   2.10-2.23 eager) — opt-in only, never in generate().
 - bf16 wins unproven (clock variance); decode unchanged (~0.62-0.67 ms/tok).
+
+## R&D loop additions (post-v0.4)
+- fp32_attention candidate: rejected by adversarial probe (drift ~0.4–0.5%
+  relative at all scales ≤ 1e5; bf16 SDPA == bf16 reference exactly).
+- Batch scaling B∈{1,2,4,8} measured (T=64/128, fp32/bf16); plateau re-verified
+  with all benchmark axes (see rnd_report Iteration 8).

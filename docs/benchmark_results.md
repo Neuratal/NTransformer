@@ -140,3 +140,22 @@ presented as measured.
 - Disk I/O of checkpoint save/load (seconds-scale, unmeasured).
 - Thread scaling (batch encode used 32 texts sequentially; rayon parallelism
   untested here).
+
+## 8. Batch-size scaling (M) — added after v0.4 review
+
+`model_20261116T160432Z.json` (fp32) / `model_20261116T160442Z.json` (bf16):
+
+| B | T=64 | T=128 | tok/s |
+|---:|---:|---:|---:|
+| 1 | 1.21 ms | 1.56 ms | 82k |
+| 2 | 1.66 ms | 2.21 ms | 116k |
+| 4 | 3.00 ms | 4.57 ms | 112k |
+| 8 | 3.53 ms | 6.31 ms | 162k |
+
+bf16 (T=128): B=2 109k · B=4 230k · B=8 187k tok/s. Small-batch bf16 is noisy
+(clock-state ±30%). B=8 T=128 fp32 logits = 1 GiB (theoretical from shape).
+
+## 9. Peak host RAM (M)
+
+CPU dev-preset forward (T=64) + 16-token generate: **+181 MB peak RSS** vs
+post-import baseline. No meaningful swap on 14.6 GiB host.

@@ -116,3 +116,97 @@ MLA (attention interface stays the seam; revisit at long-context milestone),
 FlexAttention, Mamba/DeltaNet hybrids, adaptive softmax, fused cross-entropy
 (needs training), rope_theta=500000 (no training to validate), untied
 embeddings (V1 mandate), any kernel-level rewrite (hand kernels out of scope).
+
+## 11. Residual scaling & very deep Transformers (GPT-2 null init scaling; DeepNet/DeepNorm)
+- Sources: GPT-2 (Radford et al. 2019, P) initializes residual-branch projections
+  with std 0.02/sqrt(2L) to keep residual variance constant across depth;
+  DeepNet (Wang et al. 2022, arXiv:2203.00555) — DeepNorm: scale sublayer outputs
+  by α≈(2N)^{-1/4}+… with matched init; trains 1000-layer transformers.
+- Claim: unscaled residuals make gradients amplify with depth; depth-dependent
+  scaling + matched init stabilizes. GPT-2 init is inference-irrelevant but
+  training-relevant.
+- Judgment: **not adoptable as an untrained change.** Residual scaling is an
+  init/training-stability lever; without training there is no quality signal,
+  and 2-layer dev preset is far from depth-instability regimes. Architecture
+  already pre-norms (the 2022+ standard; post-norm deliberately rejected).
+  Revisit at training-phase architecture selection. A zero-training ablation
+  would only shuffle random outputs — unmeasurable.
+- Status: documented, not adopted (would need training to validate — by boundary).
+
+## 12. ALBERT factorized embedding (Lan et al. 2020, ICLR; arXiv:1909.11942)
+- Source: "ALBERT: A Lite BERT for Self-supervised Learning of Language Representations"
+- Claim: decompose vocab embedding into V×E ∘ E×H; parameter count O(V·H) →
+  O(V·E + E·H); separates hidden size from vocab size; enables larger hidden
+  dims at equal parameter budget; cross-layer parameter sharing additional win.
+- Judgment: **already our architecture** (mandatory factorized tied head):
+  V×F + F·D (+ D×F out) vs V×D = saves 125.8M params at D=512, F=64 (M, registry
+  evidence). ALBERT additionally shares across layers — rejected for us (would
+  change capacity irreparably without training evidence; GQA/MLA are the
+  attention-side analogs we track).
+- Status: implemented, measured, promoted (v0.1+). No further change justified.
+
+## 13. Initialization research (ReZero, Bachlechner et al. 2020; fixup, Zhang et al. 2019)
+- Sources: ReZero (arXiv:2003.04887) — gate each residual branch with a γ=0
+  scalar ⇒ exact identity at init (dynamical isometry); Fixup (arXiv:1901.09321) —
+  depth-scaled residual-branch weights without normalization; ZerO (arXiv:2110.12661).
+- Claim: at init, identity mapping ⇒ stable early training without
+  normalization layers.
+- Judgment: **training-stability research; not actionable without training.**
+  Also architecturally foreign to our pre-norm + tied-matrix-at-F design. Init is
+  already documented (normal 0.02 projections; ones for norm weights). Revisit
+  only in the training phase; no inference or correctness benefit now.
+- Status: documented; no adoption (training-phase boundary).
+
+## 14. Numerical stability (fp32 softmax / upcasting; bf16 attention concerns)
+- Sources: Dao's kernels accumulate attention in fp32 internally (M: SDPA
+  flash/MemEff bf16 path); "Broken Symmetry in BF16 Attention" (arXiv:2609.34272)
+  documents bf16 attention *gradient* growth in LATE TRAINING; community practice
+  (unsloth-studio, anemll) casts attention/MLP to fp32 on overflow-prone hardware;
+  fp32 softmax is the reference convention (our reference_attention upcasts);
+  our RMSNorm already computes in fp32; our generate() upcasts logits before
+  softmax sampling.
+- Claim (measured): our bf16 inference tests pass (isfinite, allclose-1e-2);
+  flash kernel accumulates in fp32; no NaN/Inf observed across the suite.
+- Judgment: **mostly already addressed.** Training-time bf16 gradient growth is
+  out of scope (no training). Inference-time fp32-accumulation is what SDPA
+  already does. Residual risk: extreme-magnitude logits — requires a probe,
+  not speculation. A controlled probe is the only justified candidate: measure
+  logits drift vs fp32 reference under scale-blowup inputs; adopt an opt-in
+  `fp32_attention` only if drift exceeds dtype rounding; otherwise record
+  rejection. See iteration below.
+- Status: partially shipped (fp32 stats in norm, fp32 logits upcast for sampling,
+  fp32 scores in reference impl). Probe pending — see Iteration 7.
+
+## Iteration 7 — fp32_attention candidate (REJECTED with measurement)
+
+Follow-up to §14. Adversarial scale-blowup probe on the attention module
+(same weights fp32 vs bf16, inputs ×{1,10,100,1000,10000,100000}):
+
+| scale | max abs Δ (bf16 vs fp32) | output max |
+|---|---:|---:|
+| 1 | 3.4e-03 | 0.87 |
+| 10 | 0.46 | 11.7 |
+| 100 | 0.47 | 118 |
+| 1,000 | 5.19 | 1,179 |
+| 10,000 | 59.3 | 11,790 |
+| 100,000 | 503 | 117,900 |
+
+bf16 SDPA vs bf16 reference (math backend): Δ = 0.0 exactly. No NaN/Inf at any
+scale; drift is ordinary dtype rounding (~0.4-0.5% relative). The training-time
+gradient issue from arXiv:2609.34272 does not transfer to inference; our
+bf16 path already accumulates in fp32 (flash/MemEff kernels). **Decision: no
+`fp32_attention` flag added; rejection recorded. No code change.**
+
+## CPU memory (measured, previously unrecorded)
+
+CPU peak RSS delta for dev-preset forward (T=64, fp32) + 16-token generation:
+**+181 MB** (interpreter baseline 1.28 GB; params 39 MB; logits dominate the delta).
+No swap pressure on the 14.6 GiB host. Recorded as measured; per-call RSS
+churn on CUDA is ~0 (activations live on GPU).
+
+## Batch-size scaling (measured, closes last benchmark axis gap)
+
+CUDA fp32, T=128: B=1 1.56 ms (82k tok/s) · B=2 2.21 ms (116k) · B=4 4.57 ms
+(112k) · B=8 6.31 ms (162k). bf16: B=4 best at 230k tok/s; small-T bf16 noisy
+(±30% clock). Scaling is sublinear-throughput beyond B=4 at this tiny model;
+logits memory becomes the bound (B=8 T=128 fp32 = 1 GiB logits tensor).

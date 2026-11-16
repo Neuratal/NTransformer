@@ -146,3 +146,29 @@ Our deliberate differentiations: full 262k vocab factorized tied embeddings,
 strict tokenizer identity pinning (SHA-256 manifests), public reproducible
 benchmarks, and zero approximations. We are a foundation, not a competitor to
 frontier chat models; nothing else should be inferred.
+
+## Iteration 7 — bf16 adversarial-numerics probe (candidate rejected)
+
+Scale-blowup attention probe (fp32 vs bf16, ×1…×100,000): drift stays ~0.4–0.5%
+relative, zero NaN/Inf, bf16 SDPA bit-identical to bf16 math reference.
+Training-time bf16 gradient-growth literature does not transfer to inference.
+**No fp32_attention flag; rejection documented in research_notes.md §14 + probe log.**
+
+## Iteration 8 — plateau re-verification (explicit, with all axes)
+
+Axes now measured for the promoted v0.4: correctness (cached≡uncached 0.00e+00),
+prefill/decode latency across T∈[32,2048], batch scaling B∈{1,2,4,8} (new),
+tok/s, peak VRAM (measured) & RSS (measured, +181 MB), KV-cache bytes (exact)
+and scaling, checkpoint size/save/load (37.3 MiB / 13 ms / 72 ms), long-context
+scaling (12.87 ms @ T=2048), fp32/bf16/fp16 (fp16 forward+backward suite green),
+CPU vs CUDA (CPU 20-60x slower; correctness identical), SDPA kernel selection
+per dtype (measured), torch.compile (opt-in, reduce-overhead 0.946 ms prefill),
+CUDA-graph decode (v0.4 opt-in, bitwise-equal, 1.28-1.42x short/medium),
+checkpoint roundtrip bitwise. Research now covers all required topics
+(attention, positional, normalization, residuals §11, MLP, embeddings §12,
+initialization §13, KV cache, long context, numerical stability §14, kernels,
+inference optimization).
+
+**Plateau confirmed: no further justified improvements at this scale/hardware.
+Remaining levers are architectural milestones (paged KV/serving; training-time
+decisions) — documented, not actionable now.**
