@@ -4,10 +4,10 @@ A decoder-only, autoregressive Transformer core for the **Neuratal** language
 model project — designed to consume **NTokenizer v0.3** (byte-level BPE,
 vocab **262,144**) token IDs directly.
 
-**Status: V1 — architecture foundation.** Not trained. No training pipeline,
-optimizer, or dataset code exists in this repository yet, and nothing here may
-be presented as a trained model. See [Known limitations](#known-limitations)
-and `docs/final_report.md`.
+**Status: v1.0 engineering candidate.** Architecture, inference AND training
+engine now exist (no real training run has been executed here; capability
+remains "ölçülemedi"). See [Known limitations](#known-limitations) and
+`docs/final_report.md`.
 
 ## Architecture (V1)
 

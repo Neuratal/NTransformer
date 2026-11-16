@@ -61,6 +61,24 @@ class NeuratalModel(nn.Module):
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     # ------------------------------------------------------------------
+    def forward_hidden(self, input_ids: torch.Tensor) -> torch.Tensor:
+        """Encode token ids into final-norm hidden states (pre-head).
+
+        Used by training code that must avoid materializing [B, T, vocab]
+        logits (chunked cross-entropy). Semantics: exactly the pre-head half
+        of forward() — ids -> embeddings -> blocks -> final RMSNorm.
+        """
+        if input_ids.dim() != 2:
+            raise ValueError(f"input_ids must be 2-D [batch, sequence], got {tuple(input_ids.shape)}")
+        seq_len = input_ids.size(1)
+        if seq_len < 1:
+            raise ValueError("input_ids must contain at least one token")
+        positions = torch.arange(0, seq_len, device=input_ids.device)
+        hidden = self.embed_tokens(input_ids)
+        for layer in self.layers:
+            hidden = layer(hidden, positions, past_key_values=None)
+        return self.final_norm(hidden)
+
     def forward(
         self,
         input_ids: torch.Tensor,
