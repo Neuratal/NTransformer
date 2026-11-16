@@ -28,7 +28,8 @@
         "decode unchanged (Python launch-bound)",
         "checkpoint format changed (format_version=1, keys fused); v0.2 checkpoints load via transparent migration"
       ],
-      "promoted": false
+      "promoted": false,
+      "test_summary": "276 passed, 2 skipped in 18.81s"
     },
     {
       "name": "v0.4",
