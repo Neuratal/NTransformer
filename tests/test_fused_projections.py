@@ -87,7 +87,7 @@ class TestLegacyMigration:
         model = NeuratalModel(NeuratalConfig())
         legacy = self._legacy_dict(model)
         with pytest.warns(UserWarning, match="migrated"):
-            migrated = _migrate_legacy_state_dict(legacy)
+            migrated = _migrate_legacy_state_dict(legacy, expect_fused_att=True, expect_fused_mlp=True)
         assert "layers.0.attn.qkv_proj.weight" in migrated
         assert "layers.1.mlp.gate_up_proj.weight" in migrated
         assert not any(".q_proj.weight" in k for k in migrated)

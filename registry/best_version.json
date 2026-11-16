@@ -50,6 +50,21 @@
         "capture cost amortizes over >= ~16 tokens generated"
       ],
       "promoted": true
+    },
+    {
+      "name": "v0.5-candidate",
+      "commit": "cdd5565",
+      "note": "GDN mixer opt-in (attention_type=gated_delta): memory win 32x vs GQA KV cache (128 KiB O(1) state vs 4 MiB growing at cap=2048); latency regression at every measured context (GDN ~1.0-1.1 vs dense 0.75-0.8 ms/tok; prefill ~10x slower due to missing chunked-parallel form). NOT promoted for this hardware/scale; opt-in retained for memory-constrained long-context targets. Quality unverifiable without training.",
+      "test_summary": "319 passed, 2 skipped, 1 warning in 23.21s",
+      "promoted": false,
+      "evidence": {
+        "tests": "319 passed, 2 skipped (22 new GDN tests; 3 expectation fixes in fused-migration tests after model-aware migration)",
+        "correctness": "cached-vs-uncached parity verified; causality verified; roundtrip bitwise",
+        "decode_latency": "context 64/256/512/1024: GDN 1.029/1.021/1.100/1.063 ms/tok vs dense 0.804/0.755/0.801/0.772",
+        "prefill_latency": "T=128/512 fp32: GDN 21.1/81.9 ms vs dense 2.2/5.8 ms (sequential recurrence, no chunked form)",
+        "state_bytes": "128 KiB constant FP32 vs 4 MiB dense KV alloc (cap 2048) / 2 MiB fp32 @2048 tokens",
+        "parameter_count": "10,048,912 (vs dense 9,782,528)"
+      }
     }
   ]
 }

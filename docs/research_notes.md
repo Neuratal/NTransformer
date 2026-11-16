@@ -210,3 +210,79 @@ CUDA fp32, T=128: B=1 1.56 ms (82k tok/s) · B=2 2.21 ms (116k) · B=4 4.57 ms
 (112k) · B=8 6.31 ms (162k). bf16: B=4 best at 230k tok/s; small-T bf16 noisy
 (±30% clock). Scaling is sublinear-throughput beyond B=4 at this tiny model;
 logits memory becomes the bound (B=8 T=128 fp32 = 1 GiB logits tensor).
+
+# Reference architectures (2026 open-weight releases, verified primary sources)
+
+All three are real, public, open-weight releases verified on 2026-11-16 via
+official blogs/GitHub READMEs/technical reports. Facts below are quoted from
+those sources; inferences are labeled as our engineering judgment. Nothing is
+copied; every candidate must stand alone in our codebase with our own tests.
+
+## Kimi K3 (Moonshot AI, 2026 — arXiv:2607.24653; kimi.ai/blog/kimi-k3; GitHub MoonshotAI/Kimi-K3)
+Facts (source: official README/blog/tech report summary):
+- 2.8T total / 104B activated; 93 layers; 1 dense + 92 hybrid? Attention: **69 KDA
+  (Kimi Delta Attention) + 24 Gated MLA (NoPE)**; 3:1 KDA:MLA pattern; 1 final MLA;
+  attention hidden 7168; 96 heads; latent MoE dim 3584; 1M context; AttnRes (attention
+  residuals across depth); LatentMoE + quantile load balancing; native multimodal.
+- KDA is a descendant of Gated DeltaNet (Kimi Linear 2025): linear attention with
+  delta-rule update + data-dependent gating.
+Judgment: the KDA/Gated-DeltaNet component is the only piece testable here
+without training, is exactly their dominant compute pattern, and maps to a
+measured axis (long-context cost, state memory). Selected as the candidate.
+MLA (Gated MLA): latent KV compression — deferred (we already cache cheaply with
+GQA; MLA's win is training params/FLOPs, unmeasurable here without full reimpl+training).
+AttnRes: residual-branch recalibration — training-stability mechanism, no-op under random weights.
+LatentMoE/quantile balancing: routing quality — training-gated. Out of scope.
+
+## Qwen3.8-Flash-Next (Alibaba, 2026-08-26 — github QwenLM/Qwen3.8-Flash-Next; blog)
+Facts (source: official README):
+- 125B main + 51B n-gram embedding table; 6B activated; hybrid "GDN + QSA":
+  Gated DeltaNet (48 V heads, 16 QK heads, head dim 128) : Qwen Sparse Attention
+  (24 Q heads, 2 KV heads, head dim 256) in 3:1 ratio over 48 layers (12 × [3 GDN+MoE → 1 QSA+MoE]);
+  1M-token context; 4-branch **Gated Residual (GR)** stream with dynamic gate;
+  **N-gram Embedding** lookup table (51B params, host-offloaded); Muon-family optimizer.
+Judgment: GDN is the shared lineage with Kimi K3 → same candidate. QSA (sparse
+top-k block attention with indexer) needs a *trained* indexer to select blocks —
+an untrained fixed indexer measures speed but fabricates a quality story; rejected
+for promotion claims; noted for long-context milestone. N-gram embedding: 51B
+table, pure capacity/training play — rejected (no value pre-training). GR: gate
+on residual branches — training-stability mechanism, unmeasurable untrained.
+Muon: optimizer — explicitly out of scope.
+
+## DeepSeek-V4.1-Flash (DeepSeek, 2026 — arXiv:2606.19348 (V4); arXiv:2609.19969 (V4.1); HF)
+Facts (source: official docs/reports):
+- 552B total, 8B/16B activated; **Causal Encoder–Decoder (CED)** asymmetry —
+  bidirectional? No: both stacks are causal (per card); replaces MLA with hybrid
+  local + long-range design; **CSA2** (Compressed Sparse Attention v2) with three
+  static modes Full/Reindex/Reuse; FP4 main KV cache (E2M1 + E4M3 scale/16ch);
+  ~890 B/token KV (~1/4 of V4-Flash); mHC (manifold-constrained hyperconnections);
+  6-of-384 routed experts + 1 shared expert per layer.
+Judgment: FP4 KV cache — quantization territory; e2e FP4 kernels not available
+early enough to be honest here; also changes numerics silently-ish; deferred.
+CSA2 — needs trained indexer; same training-gate as QSA; deferred. CED — encoder-
+decoder asymmetry changes model class fundamentally; no benefit measurable
+untrained; rejected for this project. mHC — training-stability hyperconnections;
+unmeasurable untrained; documented.
+
+## Research matrix → candidate selection
+
+| Idea | Source | Inference-only testable? | Measurable axis | Decision |
+|---|---|---|---|---|
+| Gated DeltaNet / KDA | K3, Qwen Flash-Next, GDN paper | YES (unit fwd/bwd, cached-vs-uncached parity) | decode latency at long context; bytes/token; state O(1) vs KV O(T); stability | **SELECTED v0.5 candidate** |
+| Gated MLA / latent KV | K3, DeepSeek-V3→V4 lineage | partial | KV bytes/token | deferred (GQA already near MLA-class savings; no training to close quality gap) |
+| QSA / CSA2 sparse | Qwen, DeepSeek | only with trained indexer | speed | deferred (fixed indexer = fabricated quality) |
+| Sliding-window + dense hybrid | GDN papers | yes | speed at long ctx | feasible later; GDN already subsumes mechanism class |
+| N-gram embedding | Qwen | yes but zero gain untrained | none | rejected |
+| GR / AttnRes / mHC | all three | gates are random-init | none | rejected (training-phase) |
+| FP4 KV | DeepSeek-V4.1 | numerics change | memory | deferred (FP4 kernel maturity; silent numerics risk) |
+| MTP (inference only) | K3/DeepSeek lineage | NO (needs trained head) | — | not applicable |
+| Muon | Qwen, DeepSeek | optimizer | — | out of scope |
+
+**Selected single experiment:** opt-in `attention_type="gated_delta"` prototype —
+Sequential Gated DeltaNet mixer (Eq. 10, arXiv:2412.06464) with L2-normalized q/k,
+per-head sigmoid α/β gates, SiLU output gate + RMSNorm before o_proj, recurrent
+state cache (O(1) per token), numerics stable by contraction construction.
+Correctness gates: shapes/finite, causality, cached-vs-uncached parity vs
+chunked-free sequential reference, backward, roundtrip, long-run stability.
+Measurement vs v0.4 dense: prefill/decode latency, state bytes/token vs KV
+bytes/token, peak memory, parity. Promotion only on repeatable win; else recorded.

@@ -105,7 +105,11 @@ def load_pretrained(
     config = NeuratalConfig.from_dict(payload["config"])
     model = NeuratalModel(config)
 
-    state_dict = _migrate_legacy_state_dict(state_dict)
+    state_dict = _migrate_legacy_state_dict(
+        state_dict,
+        expect_fused_att=any(k.endswith(".attn.qkv_proj.weight") for k in model.state_dict()),
+        expect_fused_mlp=any(k.endswith(".mlp.gate_up_proj.weight") for k in model.state_dict()),
+    )
 
     model_state = model.state_dict()
     missing = sorted(k for k in model_state if k not in state_dict)
@@ -132,26 +136,25 @@ def load_pretrained(
 
 
 # ---------------------------------------------------------------------
-_LEGACY_PROJECTION_GROUPS = (
-    (r"(layers\.\d+)\.attn\.(q_proj|k_proj|v_proj)\.weight", ("q_proj", "k_proj", "v_proj"), "qkv_proj"),
-    (r"(layers\.\d+)\.mlp\.(gate_proj|up_proj)\.weight", ("gate_proj", "up_proj"), "gate_up_proj"),
-)
-
-
-def _migrate_legacy_state_dict(state_dict: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+def _migrate_legacy_state_dict(
+    state_dict: dict[str, torch.Tensor],
+    *,
+    expect_fused_att: bool,
+    expect_fused_mlp: bool,
+) -> dict[str, torch.Tensor]:
     """Coalesce pre-v0.3 split projection weights into fused tensors.
 
-    v0.3 fuses Q/K/V into ``qkv_proj`` and gate/up into ``gate_up_proj``
-    (mathematically identical — one GEMM instead of several). Checkpoints
-    written by v0.2 carry the split keys; they are concatenated deterministically
-    (weights are row concatenations) and a warning is emitted. New checkpoints
-    contain only the fused keys and pass through unchanged.
+    Only applied when the target model actually uses fused projections (GQA
+    layout). Experimental layouts (e.g. gated_delta with q/k/v_proj) pass
+    through untouched — their split keys are the current layout, not legacy.
     """
     import re
 
     migrated = dict(state_dict)
     changed = False
-    for pattern, names, fused in _LEGACY_PROJECTION_GROUPS:
+
+    if expect_fused_att:
+        pattern, names, fused, parent = r"(layers\.\d+)\.attn\.(q_proj|k_proj|v_proj)\.weight", ("q_proj", "k_proj", "v_proj"), "qkv_proj", "attn"
         groups: dict[str, dict[str, str]] = {}
         for key in list(migrated):
             m = re.fullmatch(pattern, key)
@@ -159,12 +162,27 @@ def _migrate_legacy_state_dict(state_dict: dict[str, torch.Tensor]) -> dict[str,
                 groups.setdefault(m.group(1), {})[m.group(2)] = key
         for prefix, parts in groups.items():
             if set(parts) != set(names):
-                continue  # partial legacy group: leave untouched; strict checks will report
+                continue
             ordered = [parts[n] for n in names]
             stacked = torch.cat([migrated.pop(k) for k in ordered], dim=0)
-            fused_key = f"{prefix}.{'attn' if fused == 'qkv_proj' else 'mlp'}.{fused}.weight"
-            migrated[fused_key] = stacked
+            migrated[f"{prefix}.{parent}.{fused}.weight"] = stacked
             changed = True
+
+    if expect_fused_mlp:
+        pattern, names, fused, parent = r"(layers\.\d+)\.mlp\.(gate_proj|up_proj)\.weight", ("gate_proj", "up_proj"), "gate_up_proj", "mlp"
+        groups = {}
+        for key in list(migrated):
+            m = re.fullmatch(pattern, key)
+            if m:
+                groups.setdefault(m.group(1), {})[m.group(2)] = key
+        for prefix, parts in groups.items():
+            if set(parts) != set(names):
+                continue
+            ordered = [parts[n] for n in names]
+            stacked = torch.cat([migrated.pop(k) for k in ordered], dim=0)
+            migrated[f"{prefix}.{parent}.{fused}.weight"] = stacked
+            changed = True
+
     if changed:
         warnings.warn(
             "migrated legacy split projection weights into fused qkv_proj/gate_up_proj "
