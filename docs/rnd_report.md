@@ -172,3 +172,21 @@ inference optimization).
 **Plateau confirmed: no further justified improvements at this scale/hardware.
 Remaining levers are architectural milestones (paged KV/serving; training-time
 decisions) — documented, not actionable now.**
+
+## Closure decision (v0.5 not shipped — with reasons)
+
+After the complete research pass, every candidate either (a) materialized,
+tested, and promoted (v0.3 fused GEMMs; v0.4 opt-in CUDA-graph decode) or
+(b) was rejected on measurement (torch.compile for the decode path, cudnn
+priority, hand-fusion, mask caching, fp32_attention adversarial probe,
+epsilon/norm-placement — unmeasurable without training; residual/ReZero/
+DeepNet-style depth scaling — training-phase boundary; speculative decoding —
+no draft model possible under boundaries).
+
+No remaining change meets the promotion bar: reproducible gain on at least one
+axis with all correctness gates green, at this model scale on this hardware.
+Further improvements require architectural milestones (paged KV/serving
+redesign; training-time decisions) that are explicitly out of scope.
+**Decision: v0.5 is not shipped; the loop is closed for this scope. v0.4
+remains best. Re-open only with (i) training infrastructure, (ii) paged-KV
+serving scope, or (iii) a materially different GPU/clock regime.**
