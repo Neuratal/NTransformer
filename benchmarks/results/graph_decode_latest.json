@@ -2,43 +2,23 @@
   "cells": [
     {
       "bitwise_equal_greedy_16": true,
-      "eager_median_s": 0.02002258900029119,
-      "eager_min_s": 0.019795506002992624,
-      "graph_median_s": 0.02428678599972045,
-      "graph_min_s": 0.02261062999968999,
+      "eager_median_s": 0.03968576999977813,
+      "eager_min_s": 0.03961266400074237,
+      "graph_median_s": 0.030690801999298856,
+      "graph_min_s": 0.03068458300185739,
       "prompt_len": 16,
-      "repeats": 5,
-      "speedup": 0.8244231657709529
+      "repeats": 3,
+      "speedup": 1.2930835108409604
     },
     {
       "bitwise_equal_greedy_16": true,
-      "eager_median_s": 0.020305988000473008,
-      "eager_min_s": 0.02007701500042458,
-      "graph_median_s": 0.019975606999651063,
-      "graph_min_s": 0.019798197001364315,
+      "eager_median_s": 0.03946337500019581,
+      "eager_min_s": 0.0390969549989677,
+      "graph_median_s": 0.03152901999783353,
+      "graph_min_s": 0.03147219499805942,
       "prompt_len": 64,
-      "repeats": 5,
-      "speedup": 1.0165392221036245
-    },
-    {
-      "bitwise_equal_greedy_16": true,
-      "eager_median_s": 0.019933512001443887,
-      "eager_min_s": 0.019871257998602232,
-      "graph_median_s": 0.021722935998695903,
-      "graph_min_s": 0.02139927000098396,
-      "prompt_len": 128,
-      "repeats": 5,
-      "speedup": 0.9176251314573941
-    },
-    {
-      "bitwise_equal_greedy_16": true,
-      "eager_median_s": 0.019588791001297068,
-      "eager_min_s": 0.019388851000258,
-      "graph_median_s": 0.03795762499794364,
-      "graph_min_s": 0.03788324899869622,
-      "prompt_len": 512,
-      "repeats": 5,
-      "speedup": 0.5160699860003963
+      "repeats": 3,
+      "speedup": 1.2516524459976073
     }
   ],
   "config": {
@@ -68,7 +48,7 @@
     "use_cache": true,
     "vocab_size": 262144
   },
-  "gen_len": 32,
+  "gen_len": 64,
   "machine": {
     "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
     "cpu_cores": 20,
@@ -88,6 +68,6 @@
     "seed": 42,
     "torch": "2.15.0+cu132"
   },
-  "run_id": "20261116T160009Z",
-  "saved_at_utc": "2026-11-16T16:00:10.966755+00:00"
+  "run_id": "20261116T160649Z",
+  "saved_at_utc": "2026-11-16T16:06:50.574400+00:00"
 }
