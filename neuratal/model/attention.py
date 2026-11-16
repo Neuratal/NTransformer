@@ -84,9 +84,10 @@ class GQAAttention(nn.Module):
         self.hidden_size = config.hidden_size
         self.scaling = 1.0 / math.sqrt(self.head_dim)
 
-        self.q_proj = nn.Linear(self.hidden_size, self.num_heads * self.head_dim, bias=False)
-        self.k_proj = nn.Linear(self.hidden_size, self.num_kv_heads * self.head_dim, bias=False)
-        self.v_proj = nn.Linear(self.hidden_size, self.num_kv_heads * self.head_dim, bias=False)
+        qkv_out = (self.num_heads + 2 * self.num_kv_heads) * self.head_dim
+        # Fused QKV projection: one GEMM instead of three; mathematically identical
+        # (weight rows = cat([W_q, W_k, W_v], dim=0)). Split after projection.
+        self.qkv_proj = nn.Linear(self.hidden_size, qkv_out, bias=False)
         self.o_proj = nn.Linear(self.num_heads * self.head_dim, self.hidden_size, bias=False)
 
         self.rope = RotaryEmbedding(config)
@@ -108,9 +109,13 @@ class GQAAttention(nn.Module):
             raise ValueError(f"expected hidden size {self.hidden_size}, got {hidden_states.size(-1)}")
         batch_size, q_len, _ = hidden_states.shape
 
-        q = self.q_proj(hidden_states).view(batch_size, q_len, self.num_heads, self.head_dim).transpose(1, 2)
-        k = self.k_proj(hidden_states).view(batch_size, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
-        v = self.v_proj(hidden_states).view(batch_size, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        qkv = self.qkv_proj(hidden_states)
+        q, k, v = torch.split(
+            qkv, [self.num_heads * self.head_dim, self.num_kv_heads * self.head_dim,
+                  self.num_kv_heads * self.head_dim], dim=-1)
+        q = q.reshape(batch_size, q_len, self.num_heads, self.head_dim).transpose(1, 2)
+        k = k.reshape(batch_size, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
+        v = v.reshape(batch_size, q_len, self.num_kv_heads, self.head_dim).transpose(1, 2)
 
         q, k = self.rope(q, k, positions)
 
