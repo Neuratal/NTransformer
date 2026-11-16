@@ -76,7 +76,7 @@ magic/version/CRC/length OK · metadata↔payload cross-check OK ·
 base bytes 0..255 correct in payload · special token IDs unique, ≥256, <vocab ·
 SHA-256 matches the documented v0.3 model of record.
 
-Test suite (`tests/test_ntokenizer_integration.py`, 52 tests): all pass on CPU
+Test suite (`tests/test_ntokenizer_integration.py`, 51 tests): all pass on CPU
 and CUDA —
 
 - vocab sizes agree exactly (adapter 262144 == model config 262144);
