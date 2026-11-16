@@ -10,7 +10,7 @@
       "backend": "efficient",
       "dtype": "float32",
       "max_abs_vs_fp64": 1.7285346984863281e-06,
-      "median_s": 5.170400072529446e-05,
+      "median_s": 4.380999962450005e-05,
       "status": "ok"
     },
     {
@@ -23,63 +23,63 @@
       "backend": "math",
       "dtype": "float32",
       "max_abs_vs_fp64": 4.172325134277344e-07,
-      "median_s": 0.00015384700054710265,
+      "median_s": 0.00013006900007894728,
       "status": "ok"
     },
     {
       "backend": "flash",
       "dtype": "bfloat16",
       "max_abs_vs_fp64": 0.005034923553466797,
-      "median_s": 2.4256500182673335e-05,
+      "median_s": 2.1400001060101204e-05,
       "status": "ok"
     },
     {
       "backend": "efficient",
       "dtype": "bfloat16",
       "max_abs_vs_fp64": 0.005034923553466797,
-      "median_s": 2.8598500648513436e-05,
+      "median_s": 2.5910501790349372e-05,
       "status": "ok"
     },
     {
       "backend": "cudnn",
       "dtype": "bfloat16",
       "max_abs_vs_fp64": 0.005034923553466797,
-      "median_s": 2.4305500119226053e-05,
+      "median_s": 2.1690999346901663e-05,
       "status": "ok"
     },
     {
       "backend": "math",
       "dtype": "bfloat16",
       "max_abs_vs_fp64": 0.005034923553466797,
-      "median_s": 0.00016701349704817403,
+      "median_s": 0.00014978999934101012,
       "status": "ok"
     },
     {
       "backend": "flash",
       "dtype": "float16",
       "max_abs_vs_fp64": 0.0006211996078491211,
-      "median_s": 2.2639500457444228e-05,
+      "median_s": 2.148200110241305e-05,
       "status": "ok"
     },
     {
       "backend": "efficient",
       "dtype": "float16",
       "max_abs_vs_fp64": 0.0006211996078491211,
-      "median_s": 2.7733000024454668e-05,
+      "median_s": 2.6032999812741764e-05,
       "status": "ok"
     },
     {
       "backend": "cudnn",
       "dtype": "float16",
       "max_abs_vs_fp64": 0.0006211996078491211,
-      "median_s": 2.2589001673622988e-05,
+      "median_s": 2.193549880757928e-05,
       "status": "ok"
     },
     {
       "backend": "math",
       "dtype": "float16",
       "max_abs_vs_fp64": 0.0005064010620117188,
-      "median_s": 0.0001631345021451125,
+      "median_s": 0.00014849350191070698,
       "status": "ok"
     }
   ],
@@ -102,8 +102,8 @@
     "seed": 42,
     "torch": "2.15.0+cu132"
   },
-  "run_id": "20261116T154635Z",
-  "saved_at_utc": "2026-11-16T15:46:36.454053+00:00",
+  "run_id": "20261116T160001Z",
+  "saved_at_utc": "2026-11-16T16:00:02.310794+00:00",
   "shape": {
     "batch": 1,
     "head_dim": 64,
