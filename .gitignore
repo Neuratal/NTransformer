@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+build/
+dist/
+
+# Checkpoints and artifacts
+checkpoints/
+*.safetensors
+!tests/**/*.safetensors
+
+# Test / tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
