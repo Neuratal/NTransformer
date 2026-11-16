@@ -21,6 +21,7 @@ from typing import Any, Optional
 _ALLOWED_DTYPES = ("float32", "bfloat16", "float16")
 _ALLOWED_ATTENTION_IMPL = ("sdpa", "reference")
 _ALLOWED_ATTENTION_TYPE = ("gqa", "gated_delta")
+_ALLOWED_ROUTER_TYPES = ("topk",)
 
 
 def _round_to_multiple(value: float, multiple: int) -> int:
@@ -58,6 +59,23 @@ class NeuratalConfig:
     attention_implementation: str = "sdpa"  # "reference" is a test/debug path, not for training
     attention_type: str = "gqa"             # "gated_delta" is the experimental GDN prototype (opt-in)
 
+    # --- Mixture-of-Experts (opt-in; num_experts=0 keeps the dense v0.4 path) ---
+    # Every expert is an independent SwiGLU MLP. Only the layers listed in
+    # ``moe_layer_indices`` (or selected by ``moe_layer_frequency``) are MoE;
+    # the remaining layers stay dense, so dense/MoE mixtures are first-class.
+    num_experts: int = 0
+    num_experts_per_token: int = 2       # top-k routing; ignored when num_experts == 0
+    expert_hidden_dim: Optional[int] = None  # None => intermediate_size
+    router_type: str = "topk"            # softmax top-k (the reference implementation)
+    capacity_factor: Optional[float] = None  # None => no token dropping
+    min_capacity: int = 0
+    router_aux_loss_coef: float = 0.01
+    router_z_loss_coef: float = 0.001
+    moe_layer_indices: Optional[list[int]] = None  # resolved at construction
+    moe_layer_frequency: Optional[int] = None       # layer_idx % frequency == 0
+    shared_expert: bool = False
+    shared_expert_hidden_dim: Optional[int] = None  # None => expert_hidden_dim
+
     # --- Normalization / regularization ---
     rms_norm_eps: float = 1e-5
     hidden_dropout: float = 0.0
@@ -94,12 +112,14 @@ class NeuratalConfig:
         # --- integer-valued fields: exact ints only (no silent coercion of floats/bools) ---
         for name in (
             "vocab_size", "hidden_size", "num_hidden_layers", "num_attention_heads",
-            "max_position_embeddings",
+            "max_position_embeddings", "num_experts", "num_experts_per_token",
+            "min_capacity",
         ):
             self._require_int(name, getattr(self, name))
         for name in ("embedding_size", "intermediate_size", "num_key_value_heads",
                      "rotary_dim", "cache_capacity", "logits_chunk_size",
-                     "bos_token_id", "eos_token_id", "pad_token_id"):
+                     "expert_hidden_dim", "shared_expert_hidden_dim",
+                     "moe_layer_frequency", "bos_token_id", "eos_token_id", "pad_token_id"):
             value = getattr(self, name)
             if value is not None:
                 self._require_int(name, value)
@@ -128,6 +148,16 @@ class NeuratalConfig:
         # --- depth ---
         if self.num_hidden_layers < 1:
             raise ValueError(f"num_hidden_layers must be >= 1, got {self.num_hidden_layers}")
+
+        # --- Mixture-of-Experts ---
+        # num_experts == 0 is the dense v0.4 path.  A one-expert "MoE" adds a
+        # router with no routing choice; reject it instead of silently building
+        # a slower dense layer.
+        if self.num_experts != 0 and self.num_experts < 2:
+            raise ValueError(
+                f"num_experts must be 0 (dense) or >= 2 (MoE), got {self.num_experts}"
+            )
+        self._resolve_moe_layers()
 
         # --- attention geometry ---
         if self.num_attention_heads < 1:
@@ -227,6 +257,104 @@ class NeuratalConfig:
                     f"{name} must lie in [0, vocab_size={self.vocab_size}), got {value}"
                 )
 
+    def _resolve_moe_layers(self) -> None:
+        """Validate MoE knobs and resolve the per-layer MoE placement.
+
+        Placement is deterministic and serialized: either an explicit
+        ``moe_layer_indices`` list, or ``moe_layer_frequency=k`` (selects
+        layers 0, k, 2k, ...), or — when neither is given — every layer.
+        Dense configs store an empty resolved list, so ``config.json`` always
+        says exactly which layers are MoE.
+        """
+        if self.router_type not in _ALLOWED_ROUTER_TYPES:
+            raise ValueError(
+                f"router_type must be one of {_ALLOWED_ROUTER_TYPES}, got {self.router_type!r}"
+            )
+
+        if not isinstance(self.shared_expert, bool):
+            raise ValueError(f"shared_expert must be a bool, got {self.shared_expert!r}")
+
+        if self.num_experts > 0:
+            if not (1 <= self.num_experts_per_token <= self.num_experts):
+                raise ValueError(
+                    f"num_experts_per_token must satisfy 1 <= top_k <= num_experts "
+                    f"({self.num_experts}), got {self.num_experts_per_token}"
+                )
+        elif self.num_experts_per_token < 1:
+            raise ValueError(
+                f"num_experts_per_token must be >= 1, got {self.num_experts_per_token}"
+            )
+
+        if self.capacity_factor is not None:
+            cf = self.capacity_factor
+            if not (isinstance(cf, (int, float)) and not isinstance(cf, bool)
+                    and math.isfinite(cf) and cf > 0):
+                raise ValueError(f"capacity_factor must be None or a positive finite number, got {cf!r}")
+
+        if self.min_capacity < 0:
+            raise ValueError(f"min_capacity must be >= 0, got {self.min_capacity}")
+
+        for name in ("router_aux_loss_coef", "router_z_loss_coef"):
+            value = getattr(self, name)
+            if not (isinstance(value, (int, float)) and not isinstance(value, bool)
+                    and math.isfinite(value) and value >= 0):
+                raise ValueError(f"{name} must be a finite number >= 0, got {value!r}")
+
+        requested_indices = self.moe_layer_indices
+        if self.moe_layer_frequency is not None and self.moe_layer_frequency < 1:
+            raise ValueError(
+                f"moe_layer_frequency must be >= 1 when set, got {self.moe_layer_frequency}"
+            )
+        if self.moe_layer_frequency is not None and requested_indices is not None:
+            raise ValueError(
+                "set either moe_layer_indices or moe_layer_frequency, not both"
+            )
+
+        if self.num_experts == 0:
+            if requested_indices not in (None, [], ()):
+                raise ValueError("moe_layer_indices is only valid when num_experts >= 2")
+            if self.moe_layer_frequency is not None:
+                raise ValueError("moe_layer_frequency is only valid when num_experts >= 2")
+            if self.shared_expert:
+                raise ValueError("shared_expert=True requires num_experts >= 2")
+            self.moe_layer_indices = []
+        else:
+            if requested_indices is None:
+                if self.moe_layer_frequency is None:
+                    resolved = list(range(self.num_hidden_layers))
+                else:
+                    resolved = list(range(0, self.num_hidden_layers, self.moe_layer_frequency))
+            else:
+                if not isinstance(requested_indices, (list, tuple)):
+                    raise ValueError(
+                        "moe_layer_indices must be a list/tuple of layer indices, "
+                        f"got {type(requested_indices).__name__}"
+                    )
+                resolved = []
+                for idx in requested_indices:
+                    self._require_int("moe_layer_indices entry", idx)
+                    if not (0 <= idx < self.num_hidden_layers):
+                        raise ValueError(
+                            f"moe_layer_indices entry {idx} out of range "
+                            f"[0, {self.num_hidden_layers})"
+                        )
+                    resolved.append(int(idx))
+            resolved = sorted(set(resolved))
+            if not resolved:
+                raise ValueError("MoE is enabled but no MoE layer was selected")
+            self.moe_layer_indices = resolved
+
+        if self.expert_hidden_dim is None:
+            self.expert_hidden_dim = self.intermediate_size
+        if self.expert_hidden_dim < 1:
+            raise ValueError(f"expert_hidden_dim must be >= 1, got {self.expert_hidden_dim}")
+        if self.shared_expert_hidden_dim is None:
+            self.shared_expert_hidden_dim = self.expert_hidden_dim
+        if self.shared_expert_hidden_dim < 1:
+            raise ValueError(
+                f"shared_expert_hidden_dim must be >= 1, got {self.shared_expert_hidden_dim}"
+            )
+
     @staticmethod
     def _require_int(name: str, value: Any) -> None:
         # bool is a subclass of int; accept it for int fields only via explicit check here
@@ -265,3 +393,12 @@ class NeuratalConfig:
         """True when the tied embedding uses the low-rank (F < D) factorization."""
         assert self.embedding_size is not None  # resolved in post_init
         return self.embedding_size < self.hidden_size
+
+    @property
+    def is_moe(self) -> bool:
+        """True when this config enables Mixture-of-Experts FFN layers."""
+        return self.num_experts >= 2
+
+    @property
+    def num_moe_layers(self) -> int:
+        return len(self.moe_layer_indices or [])

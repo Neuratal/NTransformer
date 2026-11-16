@@ -52,9 +52,19 @@ def save_pretrained(model: NeuratalModel, output_dir: Union[str, Path]) -> Path:
 
     state_dict = model.state_dict()
     _check_no_shared_storage(state_dict)
+    config_payload = build_config_payload(model)
+    _atomic_write_text(output_dir / CONFIG_FILENAME, json.dumps(config_payload, indent=2, sort_keys=True))
+    _atomic_save_safetensors(state_dict, output_dir / WEIGHTS_FILENAME)
+    return output_dir
 
-    # The config must describe the tensors actually written. If the caller cast the
-    # model after construction, record the real dtype (with a warning — never silently).
+
+def build_config_payload(model: NeuratalModel) -> dict:
+    """Build the config.json payload, recording the *actual* parameter dtype.
+
+    Shared by single-file and sharded writers so both describe identical model
+    configs. If the caller cast the model after construction, the real dtype is
+    recorded (with a warning — never silently).
+    """
     dtypes = {str(p.dtype).removeprefix("torch.") for p in model.parameters()}
     if len(dtypes) != 1:
         raise RuntimeError(f"mixed parameter dtypes are not supported for checkpointing: {sorted(dtypes)}")
@@ -68,15 +78,11 @@ def save_pretrained(model: NeuratalModel, output_dir: Union[str, Path]) -> Path:
             stacklevel=2,
         )
         config_dict["dtype"] = actual_dtype
-
-    config_payload = {
+    return {
         "format_version": FORMAT_VERSION,
         "architectures": [ARCHITECTURE_NAME],
         "config": config_dict,
     }
-    _atomic_write_text(output_dir / CONFIG_FILENAME, json.dumps(config_payload, indent=2, sort_keys=True))
-    _atomic_save_safetensors(state_dict, output_dir / WEIGHTS_FILENAME)
-    return output_dir
 
 
 def load_pretrained(
@@ -115,9 +121,21 @@ def load_pretrained(
     missing = sorted(k for k in model_state if k not in state_dict)
     unexpected = sorted(k for k in state_dict if k not in model_state)
     if missing or unexpected:
+        # A dense checkpoint loaded with an MoE config (or the inverse) fails the
+        # generic key check; say so explicitly instead of making the caller infer
+        # it from a wall of expert key names.
+        file_has_moe = _has_moe_keys(state_dict)
+        model_has_moe = _has_moe_keys(model_state)
+        hint = ""
+        if file_has_moe != model_has_moe:
+            hint = (
+                f" — architecture mismatch: checkpoint is "
+                f"{'MoE' if file_has_moe else 'dense'} but config builds a "
+                f"{'MoE' if model_has_moe else 'dense'} model"
+            )
         raise ValueError(
             f"checkpoint weights do not match the model: missing keys={missing}, "
-            f"unexpected keys={unexpected}"
+            f"unexpected keys={unexpected}{hint}"
         )
     mismatched = sorted(k for k in model_state if model_state[k].shape != state_dict[k].shape)
     if mismatched:
@@ -136,6 +154,13 @@ def load_pretrained(
 
 
 # ---------------------------------------------------------------------
+def _has_moe_keys(state_dict: dict[str, torch.Tensor]) -> bool:
+    return any(
+        ".mlp.router." in k or ".mlp.experts." in k or ".mlp.shared_expert." in k
+        for k in state_dict
+    )
+
+
 def _migrate_legacy_state_dict(
     state_dict: dict[str, torch.Tensor],
     *,

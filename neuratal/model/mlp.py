@@ -16,18 +16,24 @@ from neuratal.config import NeuratalConfig
 
 
 class SwiGLU(nn.Module):
-    def __init__(self, config: NeuratalConfig):
+    def __init__(self, config: NeuratalConfig, intermediate_size: int | None = None):
         super().__init__()
         self.hidden_size = config.hidden_size
-        self.intermediate_size = config.intermediate_size
+        self.intermediate_size = (
+            config.intermediate_size if intermediate_size is None else int(intermediate_size)
+        )
+        if self.intermediate_size < 1:
+            raise ValueError(f"intermediate_size must be >= 1, got {self.intermediate_size}")
         # Fused gate+up projection: one GEMM instead of two; mathematically identical
         # (weight rows = cat([W_gate, W_up], dim=0)). Split after projection.
         self.gate_up_proj = nn.Linear(self.hidden_size, 2 * self.intermediate_size, bias=False)
         self.down_proj = nn.Linear(self.intermediate_size, self.hidden_size, bias=False)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if x.dim() != 3:
-            raise ValueError(f"expected 3-D input [batch, seq, hidden], got {x.dim()}-D")
+        # Any leading dims are allowed: the dense block uses [B, T, D] while
+        # expert dispatch uses [tokens, D]. Both are the same row-wise math.
+        if x.dim() < 2:
+            raise ValueError(f"expected input with at least 2 dims, got {x.dim()}-D")
         gate, up = self.gate_up_proj(x).chunk(2, dim=-1)
         return self.down_proj(F.silu(gate) * up)
 

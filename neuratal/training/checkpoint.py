@@ -47,7 +47,8 @@ def save_training_checkpoint(
 ) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    save_pretrained(model, output_dir)  # writes config.json + model.safetensors (atomic)
+    core = model.module if hasattr(model, "module") else model  # DDP unwrap
+    save_pretrained(core, output_dir)  # writes config.json + model.safetensors (atomic)
 
     # --- trainer state as a flat tensor dict ---
     state: dict[str, torch.Tensor] = {}
@@ -64,6 +65,7 @@ def save_training_checkpoint(
     if scheduler is not None and hasattr(scheduler, "state_dict"):
         for k, v in scheduler.state_dict().items():
             if isinstance(v, (list, tuple)):
+                state[f"scheduler.{k}.__len__"] = torch.tensor([len(v)], dtype=torch.long)
                 for j, x in enumerate(v):
                     if isinstance(x, (int, float)):
                         state[f"scheduler.{k}.{j}"] = torch.tensor(float(x))
@@ -79,6 +81,7 @@ def save_training_checkpoint(
             state[f"trainer.rng_cuda_{i}"] = torch.cuda.get_rng_state(i).to(torch.uint8)
 
     _atomic_save_safetensors(state, output_dir / TRAINER_STATE_FILE)
+    model_cfg = core.config
     meta = {
         "trainer_format_version": CHECKPOINT_FORMAT_VERSION,
         "scheduler": scheduler_name,
@@ -87,6 +90,10 @@ def save_training_checkpoint(
         "global_step": int(global_step),
         "epoch": int(epoch),
         "tokens_seen": int(tokens_seen),
+        "architecture": "moe" if model_cfg.is_moe else "dense",
+        "num_experts": int(model_cfg.num_experts),
+        "top_k": int(model_cfg.num_experts_per_token) if model_cfg.is_moe else 0,
+        "moe_layers": list(model_cfg.moe_layer_indices or []),
     }
     _atomic_write_text(output_dir / TRAINER_META_FILE, json.dumps(meta, indent=2, sort_keys=True))
     return output_dir
@@ -108,17 +115,42 @@ def load_training_checkpoint(checkpoint_dir: Union[str, Path], map_location: str
     if fmt != CHECKPOINT_FORMAT_VERSION:
         raise ValueError(f"unsupported trainer format_version {fmt}")
     model = load_pretrained(checkpoint_dir, map_location=map_location)
+    expected_arch = "moe" if model.config.is_moe else "dense"
+    recorded_arch = meta.get("architecture")
+    if recorded_arch is not None and recorded_arch != expected_arch:
+        raise ValueError(
+            f"training checkpoint architecture mismatch: meta says {recorded_arch!r}, "
+            f"model config builds {expected_arch!r}"
+        )
     return model, meta
 
 
 def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, Path],
-                               map_location: str = "cpu") -> dict[str, Any]:
-    """Restore optimizer/scheduler/RNG state from a checkpoint directory."""
+                               map_location: str = "cpu", *, model=None) -> dict[str, Any]:
+    """Restore optimizer/scheduler/RNG state from a checkpoint directory.
+
+    Optimizer tensors are moved to each parameter's device, so a checkpoint
+    written on CPU resumes correctly on CUDA (and vice versa).  When ``model``
+    is supplied, its dense/MoE architecture is checked against the recorded
+    checkpoint metadata before any state is installed.
+    """
     checkpoint_dir = Path(checkpoint_dir)
     state_path = checkpoint_dir / TRAINER_STATE_FILE
     if not state_path.is_file():
         raise ValueError(f"missing {TRAINER_STATE_FILE} in {checkpoint_dir}")
     tensors = _st_load(str(state_path), device="cpu")
+
+    meta_path = checkpoint_dir / TRAINER_META_FILE
+    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
+    if model is not None:
+        core = model.module if hasattr(model, "module") else model
+        expected_arch = "moe" if core.config.is_moe else "dense"
+        recorded_arch = meta.get("architecture")
+        if recorded_arch is not None and recorded_arch != expected_arch:
+            raise ValueError(
+                f"training checkpoint architecture mismatch: meta says {recorded_arch!r}, "
+                f"target model is {expected_arch!r}"
+            )
 
     # --- optimizer ---
     for i, group in enumerate(optimizer.param_groups):
@@ -129,23 +161,32 @@ def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, 
             st = {}
             for k in st_keys:
                 leaf = k.rsplit(".", 1)[-1]
-                t = tensors[k]
-                if t.dtype in (torch.float32, torch.float64, torch.float16, torch.bfloat16) and t.numel() == 1:
-                    st[leaf] = float(t)
-                else:
-                    st[leaf] = t.clone()
+                st[leaf] = tensors[k].to(device=p.device).clone()
             optimizer.state[p] = st
 
     # --- scheduler ---
     if scheduler is not None and hasattr(scheduler, "load_state_dict"):
         sched_state = {}
+        seen = set()
         for k in list(tensors):
-            if k.startswith("scheduler."):
-                rest = k[len("scheduler."):]
-                parts = rest.split(".")
-                sched_state[parts[0]] = float(tensors[k].item()) if len(parts) == 1 else [
-                    float(tensors[f"scheduler.{parts[0]}.{j}"].item()) for j in range(10)
-                    if f"scheduler.{parts[0]}.{j}" in tensors]
+            if not k.startswith("scheduler."):
+                continue
+            rest = k[len("scheduler."):]
+            parts = rest.split(".")
+            name = parts[0]
+            if name in seen:
+                continue
+            len_key = f"scheduler.{name}.__len__"
+            if len_key in tensors:
+                length = int(tensors[len_key].item())
+                sched_state[name] = [
+                    float(tensors[f"scheduler.{name}.{j}"].item())
+                    for j in range(length) if f"scheduler.{name}.{j}" in tensors
+                ]
+                seen.add(name)
+            elif len(parts) == 1:
+                sched_state[name] = float(tensors[k].item())
+                seen.add(name)
         if sched_state:
             scheduler.load_state_dict(sched_state)
 
@@ -158,8 +199,6 @@ def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, 
             if key in tensors:
                 torch.cuda.set_rng_state(tensors[key].cpu(), i)
 
-    meta_path = checkpoint_dir / TRAINER_META_FILE
-    meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
     meta["global_step"] = int(tensors["trainer.global_step"].item())
     meta["epoch"] = int(tensors["trainer.epoch"].item())
     meta["tokens_seen"] = int(tensors["trainer.tokens_seen"].item())
