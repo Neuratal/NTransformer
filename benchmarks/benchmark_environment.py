@@ -25,6 +25,10 @@ from neuratal.integration import build_manifest
 NTOKENIZER_ROOT = Path(os.environ.get("NTOKENIZER_ROOT", Path(__file__).resolve().parents[2] / "NTokenizer"))
 NTOK = NTOKENIZER_ROOT / "output" / "v0.3" / "ntokenizer-0.3-256k.ntok"
 
+_BINDINGS_DIR = Path(os.environ.get("NTOKENIZER_BINDINGS", NTOKENIZER_ROOT / "python"))
+if _BINDINGS_DIR.is_dir() and str(_BINDINGS_DIR) not in sys.path:
+    sys.path.insert(0, str(_BINDINGS_DIR))
+
 
 def nvidia_smi_field(query: str):
     try:

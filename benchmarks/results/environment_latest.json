@@ -63,7 +63,7 @@
     "tokenizer_sha256": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9",
     "vocab_size": 262144
   },
-  "ntokenizer_native_version": "unavailable: No module named 'neuratal_tokenizer'",
+  "ntokenizer_native_version": "0.3.0",
   "nvidia_smi": {
     "compute_cap": "8.9",
     "cuda_version": "unavailable: Command '['nvidia-smi', '--query-gpu=cuda_version', '--format=csv,noheader']' returned non-zero exit status 2.",
@@ -72,9 +72,9 @@
     "memory_total_mib": "8188 MiB"
   },
   "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
-  "run_id": "20261116T150127Z",
+  "run_id": "20261116T150250Z",
   "safetensors_version": "0.8.0",
-  "saved_at_utc": "2026-11-16T15:01:28.010994+00:00",
+  "saved_at_utc": "2026-11-16T15:02:51.655364+00:00",
   "sdpa_backends": {
     "cudnn[bfloat16]": "ok",
     "cudnn[float16]": "ok",
