@@ -220,7 +220,11 @@ Skipped (exact reasons printed by `pytest -rs`):
 no XFAILs, no hidden skips. Full CUDA-parametrized suite runs (the box has
 CUDA). New tests this pass: `tests/test_engine_regressions.py` — 8 tests
 (full-width head step+checkpoint, 4 fingerprint cases, fp16 step + scaler
-restore, exact RNG/optimizer restore, resume-then-continue).
+restore, exact RNG/optimizer restore, resume-then-continue); and
+`tests/test_moe_pathological.py` — 11 tests (all-to-one-expert assignment
+counts, starved/unused experts eager gradients, saturated router logits
+(z-loss stays finite), assignment conservation with and without capacity,
+kept+dropped == total, aux-loss gradient reaches the router).
 
 ## H. Scale readiness (per preset; measured counts; honest claims)
 

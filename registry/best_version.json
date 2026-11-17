@@ -153,7 +153,7 @@
       "commit": "4733aed",
       "branch": "feature/final-release-2026-11",
       "note": "Final engineering pass: MoE gather-once/scatter-once dispatch, fused F.rms_norm (no autocast), meta-init skip + lazy presets (import 13.4->1.3s), engine fixes (full-width head crash, fp16 GradScaler, DDP MoE find_unused_parameters), checkpoint fingerprint validation + optimizer-index guard + scaler state, preset honesty rename (7b->5.6b, 7b-moe->5.7b-moe). Dense prefill fp32 T=128 2.092->1.854 ms; T=512 within ~5%; bf16 ~5-10%. MoE fwd B2/T128 -17%. Not promoted: gains are real but modest; promotion requires \u22651 reproducible axis beyond noise under the registry's own rule \u2014 import time and bf16 T>=128 qualify, but best-version semantics for the architecture are unchanged.",
-      "test_summary": "402 passed, 3 skipped, 1 warning in 44.49s",
+      "test_summary": "413 passed, 3 skipped, 1 warning in 44.01s",
       "promoted": false,
       "evidence": {
         "import_time_s": "13.4 -> 1.3",
