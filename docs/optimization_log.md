@@ -151,3 +151,68 @@ See `docs/rnd_report.md` for the full loop. Summary:
 - faithful Eq.6-9 form; verified vs oracle; 5-13x over sequential GDN
 - dense GQA still wins everywhere at dev scale (prefill and decode); memory is
   the only GDN axis (constant state); NOT promoted; archived
+
+## 2026-11-17 — v1.1 pass (final engineering + MoE professionalization)
+
+All measurements RTX 4060 Laptop (45 W cap; ±10–20% inter-run spread normal),
+torch 2.15.0+cu132, Python 3.14.4. Mitigations: medians, warmup ≥ warmup/8 per
+run where applicable, before/after in the same benchmark script.
+
+### Adopted — fused F.rms_norm (dense and MoE paths)
+- Basis: profiler showed RMSNorm as repeated pow/mean/rsqrt/mul/mul/cast chains
+  (~6 kernels, 2 + 3 calls/block+head).
+- Change: dispatch to `F.rms_norm` only when input dtype == weight dtype AND no
+  autocast region is active; otherwise the exact previous fp32 path runs
+  (autocast promotes rms_norm to fp32 and would change the dtype contract —
+  caught by test_moe_engine bf16 step, fixed before merge).
+- Measured: op level ~4x faster in fp32 (0.058 → 0.015 ms at [4, 512, 512]);
+  end-to-end fp32 prefill 2.092 → 1.854 ms (T=128), 4.121 → 3.926 ms (T=512);
+  bf16 3.032 → 2.725 ms (T=512). T=1024 fp32 within noise; T=32 bf16 within
+  noise. max |Δ| fp32 9.5e-7 (1-ulp level).
+
+### Adopted — MoE gather-once / scatter-once dispatch
+- Basis: per-expert `index_select` + `index_add` rounds (2E random-access
+  kernels) + a CUDA-scalar `torch.tensor(0.0, device=...)` H2D copy in the
+  no-capacity path (removed) + double int64→float casts for offsets
+  (bincount is already int64).
+- Change: single gather of sorted assignments, one contiguous slice per
+  expert, one concat, one `index_add`. Identical byte volume, fewer launches.
+- Measured (n=40, medians): fwd B2/T128 1.927 → 1.593 ms (−17%), B2/T512
+  3.447 → 3.387 ms, B4/T128 1.973 → 1.906 ms, B4/T512 5.473 → 5.287 ms;
+  backward within noise. Kept: strictly fewer kernels, same math.
+
+### Rejected — torch._grouped_mm (private aten op) for expert GEMMs
+- Measured (uniform [G,256,512]x[G,512,2816] bf16): 0.379 vs 0.387 ms (rows
+  256/expert); realistic imbalanced gate_up+down pipeline 0.601 vs 0.615 ms —
+  no win; exact same outputs (diff 0.0). Private API, layout constraints
+  (bf16, int32 offs, contiguous) — not justified.
+
+### Rejected — torch.compile on MoEFFN
+- Measured (fp32 model, B4/T512, fwd+bwd): 14.90 vs 15.07 ms — within noise;
+  max |Δ| 8.9e-08. Not adopted; would add environment fragility.
+
+### Adopted — meta-device init skip + lazy preset construction
+- Basis: `nn.init.normal_` on meta tensors dispatched through fake-tensor
+  paths (~4 s for the 500B-class preset); presets were imported eagerly by
+  `import neuratal` (13.4 s total).
+- Change: `_init_module` no-ops on meta tensors; `neuratal/__init__.py`
+  defers preset machinery behind PEP 562 `__getattr__`.
+- Measured: `import neuratal` 13.4 → 1.3 s; `PRESETS` first access ~5 s once.
+
+### Kept after re-measurement — SDPA default backend
+- Earlier note (Attempt 3) recorded cudnn > flash at T=256. Re-measured here
+  (B2/H4/Hkv2/T512/hd64 GQA bf16, 3 interleaved rounds): flash/cudnn/default
+  all sweep 0.17–0.95 ms across rounds (clock-state dominated, ±15%); no
+  reproducible winner. Decision unchanged: never force a backend.
+
+### Adopted — fp16 GradScaler in the training engine
+- basis: fp16 AMP ran unscaled (under/overflow risk); bf16 path unchanged.
+- Change: GradScaler('cuda') with unscale-before-clip; step skipped on
+  non-finite grads; scaler state saved/restored in training checkpoints.
+
+### Measured — chunked linear cross-entropy (unchanged)
+- Gradient parity vs standard CE: rel L2 = 1.0e-06. fwd+bwd 44.7/88.0 ms vs
+  33.0/62.4 ms standard (512/1024 tokens) — ~35% slower by design (backward
+  recomputes logits); allocates 1.29 GB vs 2.24/4.29 GB — the entire point of
+  the path at V=262144. No change made; workspace is now charged at fp32
+  width in the estimator (was 2 bytes), which is what the kernel actually uses.

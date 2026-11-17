@@ -159,3 +159,54 @@ bf16 (T=128): B=2 109k · B=4 230k · B=8 187k tok/s. Small-batch bf16 is noisy
 
 CPU dev-preset forward (T=64) + 16-token generate: **+181 MB peak RSS** vs
 post-import baseline. No meaningful swap on 14.6 GiB host.
+
+## 8. 2026-11-17 — v1.1 pass addenda (M)
+
+Same machine/seed contract as above. Artifacts: `model_20261117T071008Z.json`
+(fp32), `model_20261117T071038Z.json` (bf16), `moe_20261117T065816Z.json`,
+`chunked_ce_20261117T065322Z.json`. Dense baseline re-measured in a frozen
+worktree at commit 196a613 for the same settings (see
+`docs/release_readiness.md`).
+
+### 8.1 Dense prefill, dev preset (M)
+
+| Shape | baseline fp32 | now fp32 | now bf16 |
+|---|---:|---:|---:|
+| B=1 T=32 | 1.693 ms | 1.483 ms | 2.033 ms (noise) |
+| B=1 T=128 | 2.092 ms | 1.854 ms | 1.566 ms |
+| B=1 T=256 | 2.775 ms | 2.505 ms | 1.942 ms |
+| B=1 T=512 | 4.121 ms | 3.926 ms | 2.725 ms |
+| B=1 T=1024 | 7.479 ms | 7.675 ms (noise) | 5.141 ms |
+
+### 8.2 MoE module-level, hidden=512, 8 SwiGLU experts, top-2, expert_hidden=1408 (M)
+
+| Shape | dense fwd | MoE fwd | MoE fwd+bwd | dense fwd+bwd |
+|---|---:|---:|---:|---:|
+| B=2 T=128 | 0.243 ms | 1.593 ms | 7.534 ms | 0.965 ms |
+| B=2 T=512 | 0.816 ms | 3.387 ms | 8.534 ms | 3.275 ms |
+| B=4 T=128 | 0.481 ms | 1.906 ms | 4.828 ms | 1.741 ms |
+| B=4 T=512 | 2.187 ms | 5.287 ms | 15.170 ms | 6.364 ms |
+
+MoE fwd+bwd is ~2–4.5x dense at identical geometry — close to the expected
+~2x active-expert-FLOPs ratio plus launch overhead. Expert utilization at
+init: 8/8 active, max/mean load imbalance ~1.2–1.3.
+
+### 8.3 Chunked linear cross-entropy vs standard CE, V=262,144, F=64 (M)
+
+| tokens | chunked fwd+bwd | standard fwd+bwd | chunked peak alloc | standard peak alloc |
+|---:|---:|---:|---:|---:|
+| 512 | 44.7 ms | 33.0 ms | 1,284 MiB | 2,242 MiB |
+| 1024 | 88.0 ms | 62.4 ms | 1,286 MiB | 4,291 MiB |
+
+Gradient parity (rel L2): 1.0e-06. Chunked CE is ~35% slower but uses
+~3.3x less memory; that trade is why the training engine uses it.
+
+### 8.4 Startup (M)
+
+`import neuratal`: 13.4 s → 1.3 s (meta-device init skip + lazy preset
+imports). Full test suite: 400 passed, 3 skipped, 1 warning, ~47 s.
+
+**Reading the tables**: this laptop's 45 W power cap makes all wall-clock
+numbers fluctuate; do not read <10% differences as significant. The RMSNorm
+adoption is supported by the op-level measurement (4x) and is consistent
+with (not solely derived from) the end-to-end numbers.

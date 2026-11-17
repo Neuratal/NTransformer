@@ -27,7 +27,6 @@ class ChunkedLinearCEFunction(torch.autograd.Function):
         chunk_size = int(chunk_size) if chunk_size else 256
         flat_h = hidden.reshape(-1, hidden.size(-1)).contiguous()
         flat_t = targets.reshape(-1).to(torch.long).contiguous()
-        n = (flat_t != ignore_index).sum().detach()
         total = flat_h.new_zeros((), dtype=torch.float32)
         # Hoist fp32 weight conversion out of the chunk loop. For bf16/fp16
         # models this avoids re-allocating the full [V, F] matrix once per chunk.
@@ -42,14 +41,12 @@ class ChunkedLinearCEFunction(torch.autograd.Function):
         ctx.save_for_backward(flat_h, flat_t, out_proj_weight, emb_weight)
         ctx.chunk_size = chunk_size
         ctx.ignore_index = int(ignore_index)
-        ctx.n_tokens = n
         ctx.hidden_shape = hidden.shape
         return total
 
     @staticmethod
     def backward(ctx, grad_output):
         flat_h, flat_t, out_proj_weight, emb_weight = ctx.saved_tensors
-        n = ctx.n_tokens
         chunk_size = ctx.chunk_size
         ignore_index = ctx.ignore_index
         go = grad_output.to(torch.float32)

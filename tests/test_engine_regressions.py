@@ -91,7 +91,6 @@ class TestFingerprintValidation:
         assert meta["global_step"] == 1
 
 
-@pytest.mark.skipif(not torch.cuda.is_available(), reason="GradScaler path requires CUDA")
 def tiny_cfg():
     return NeuratalConfig(
         vocab_size=4096, hidden_size=32, num_hidden_layers=1,
@@ -100,6 +99,7 @@ def tiny_cfg():
     )
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="GradScaler path requires CUDA")
 def test_fp16_step_and_scaler_resume(tmp_path):
     torch.manual_seed(0)
     model = NeuratalModel(tiny_cfg()).to("cuda")
@@ -131,3 +131,84 @@ def test_fp16_step_and_scaler_resume(tmp_path):
     # optimizer state actually restored (AdamW step counter incremented at save time)
     steps = [float(opt2.state[p]["step"]) for p in opt2.param_groups[0]["params"] if p in opt2.state]
     assert steps and all(s > 0 for s in steps)
+
+
+def test_resume_restores_rng_and_optimizer_state(tmp_path):
+    from torch.utils.data import DataLoader
+
+    from neuratal.training.chunked_linear_ce import chunked_linear_cross_entropy
+    from neuratal.training.data import collate
+
+    torch.manual_seed(123)
+    model = full_width_model()
+    opt = build_optimizer(model, learning_rate=1e-3)
+    sched = WarmupCosineSchedule(opt, warmup_steps=1, total_steps=8)
+    ds = SyntheticTokenDataset(4, 8, vocab_size=4096, seed=9)
+    batch = next(iter(DataLoader(ds, batch_size=1, collate_fn=collate)))
+    for _ in range(2):
+        hidden = model.forward_hidden(batch["input_ids"])
+        total, n_tok = chunked_linear_cross_entropy(
+            hidden, batch["labels"], None, model.embed_tokens.embedding_weight)
+        (total / n_tok.clamp_min(1)).backward()
+        opt.step()
+        sched.step()
+        opt.zero_grad(set_to_none=True)
+    # reference map by (group_idx, param_idx) — the checkpoint's own addressing
+    ref_state = {}
+    for i, group in enumerate(opt.param_groups):
+        for j, p in enumerate(group["params"]):
+            st = opt.state.get(p)
+            if st is not None:
+                ref_state[(i, j)] = {k: (v.detach().cpu().clone() if torch.is_tensor(v) else v)
+                                     for k, v in st.items()}
+    rng_before = torch.get_rng_state()
+    save_training_checkpoint(model, opt, sched, tmp_path / "ckpt", global_step=2,
+                             tokens_seen=16, tokenizer_fingerprint="fp-1")
+
+    # corrupt the world, then resume
+    torch.manual_seed(999)
+    model2 = full_width_model()
+    opt2 = build_optimizer(model2, learning_rate=1e-3)
+    sched2 = WarmupCosineSchedule(opt2, warmup_steps=1, total_steps=8)
+    assert sched2.current_step == 0
+    meta = resume_training_checkpoint(opt2, sched2, tmp_path / "ckpt",
+                                      expected_tokenizer_fingerprint="fp-1")
+    assert meta["global_step"] == 2
+    assert sched2.current_step == 2
+    assert torch.equal(torch.get_rng_state(), rng_before)
+
+    # optimizer tensors restored exactly (not merely "finite")
+    matched = 0
+    for i, group in enumerate(opt2.param_groups):
+        for j, p in enumerate(group["params"]):
+            st = opt2.state.get(p)
+            if st is None:
+                continue
+            ref = ref_state[(i, j)]
+            for k, v in st.items():
+                if torch.is_tensor(v):
+                    assert torch.equal(v.detach().cpu(), ref[k]), (i, j, k)
+            matched += 1
+    assert matched == len(ref_state)
+
+
+def test_resume_then_continue_updates_step_counter(tmp_path):
+    torch.manual_seed(7)
+    model = full_width_model()
+    opt = build_optimizer(model, learning_rate=1e-3)
+    sched = WarmupCosineSchedule(opt, warmup_steps=1, total_steps=8)
+    save_training_checkpoint(model, opt, sched, tmp_path / "ckpt", global_step=3,
+                             tokens_seen=24, tokenizer_fingerprint=None)
+
+    # resume into a *fresh* engine and run two more steps
+    model2 = full_width_model()
+    ds = SyntheticTokenDataset(8, 8, vocab_size=4096, seed=3)
+    tc = TrainConfig(batch_size=1, sequence_length=8, learning_rate=1e-3,
+                     warmup_steps=1, gradient_accumulation_steps=1,
+                     precision="float32", eval_every_steps=99, log_every_steps=1,
+                     checkpoint_every_steps=99, max_steps=5,
+                     out_dir=str(tmp_path / "run"), device="cpu")
+    trained, history = train(model2, ds, None, tc, resume_from=str(tmp_path / "ckpt"))
+    steps = [h["step"] for h in history if "main_loss" in h]
+    assert steps == [4, 5]
+    assert all(math.isfinite(h["main_loss"]) for h in history if "main_loss" in h)

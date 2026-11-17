@@ -41,9 +41,9 @@ def chunked_cross_entropy(
 ) -> tuple[torch.Tensor, torch.Tensor]:
     """Compute (sum_loss, supervised_token_count) for hidden states [batch, seq, hidden].
 
-    hidden and targets must be on the same device. Returns detached scalars only
-    when not training... actually returns loss tensor (scalar, requires_grad) and
-    token count (detached). Use ``.backward()`` on (loss / token_count) or scale.
+    hidden and targets must be on the same device. Returns a scalar loss
+    tensor (requires_grad) and the supervised token count (detached). Use
+    ``.backward()`` on (loss / token_count) or scale.
     """
     if hidden.dim() != 3:
         raise ValueError(f"hidden must be [batch, seq, hidden], got {hidden.dim()}-D")
