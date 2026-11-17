@@ -1,8 +1,8 @@
 """Neuratal Transformer — decoder-only, autoregressive Transformer core.
 
-v1.0 engineering candidate: architecture, inference components, training engine
-and full checkpoint management. Tokenization/detokenization are the
-responsibility of NTokenizer; token IDs are consumed verbatim.
+v1.1.0rc1: architecture, inference components, training engine and full
+checkpoint management. Tokenization/detokenization are the responsibility of
+NTokenizer; token IDs are consumed verbatim.
 """
 
 from neuratal.config import NeuratalConfig

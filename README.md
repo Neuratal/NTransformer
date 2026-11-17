@@ -8,7 +8,7 @@ this file is either measured on the development machine or explicitly labeled
 as an estimate.
 
 > **Status: v1.1.0rc1 (engineering release candidate).** The framework installs,
-> tests green (402 passed, 3 skipped, 1 warning), and small
+> tests green (413 passed, 3 skipped, 1 warning), and small
 > dense/MoE training runs end-to-end on the 8 GB development GPU with
 > synthetic data. **No real corpus has been used; no weights of a trained
 > model exist. This is not a production-ready serving system and not a
@@ -269,7 +269,7 @@ Benchmark suites: `benchmark_environment`, `benchmark_tokenizer`,
 ## Testing
 
 ```bash
-python -m pytest tests/ -q          # full suite: 402 passed, 3 skipped, 1 warning
+python -m pytest tests/ -q          # full suite: 413 passed, 3 skipped, 1 warning
 python -m pytest tests/ -k cuda     # CUDA-only subset
 ```
 

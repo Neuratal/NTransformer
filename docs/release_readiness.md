@@ -206,10 +206,10 @@ overwritten.
 ```
 $ .venv/bin/python -m pytest tests -p no:warnings --tb=no -q
 … (all green) …
-402 passed, 3 skipped, 1 warning
+413 passed, 3 skipped, 1 warning
 
 $ .venv/bin/python -m pytest tests 2>&1 | tail -1
-402 passed, 3 skipped, 1 warning in 44.49s
+413 passed, 3 skipped, 1 warning in 44.49s
 ```
 
 Skipped (exact reasons printed by `pytest -rs`):
