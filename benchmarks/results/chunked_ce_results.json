@@ -1,0 +1,83 @@
+{
+  "cells": [
+    {
+      "chunked_fwdbwd_peak_allocated_bytes": 1345860096,
+      "chunked_fwdbwd_peak_reserved_bytes": 1348468736,
+      "chunked_fwdbwd_s": {
+        "max": 0.045463992000122744,
+        "mean": 0.044522462749995384,
+        "median": 0.04466306249992158,
+        "min": 0.0426002399999561,
+        "n": 8,
+        "p95": 0.045463992000122744,
+        "stdev": 0.0008187906473384426
+      },
+      "standard_fwdbwd_peak_allocated_bytes": 2350783488,
+      "standard_fwdbwd_peak_reserved_bytes": 2353004544,
+      "standard_fwdbwd_s": {
+        "max": 0.03373259800014239,
+        "mean": 0.03297267037501683,
+        "median": 0.0329876980000563,
+        "min": 0.0322126969999772,
+        "n": 8,
+        "p95": 0.03373259800014239,
+        "stdev": 0.0005774974812989052
+      },
+      "standard_logits_bytes_fp32": 536870912,
+      "tokens": 512
+    },
+    {
+      "chunked_fwdbwd_peak_allocated_bytes": 1347961344,
+      "chunked_fwdbwd_peak_reserved_bytes": 1367343104,
+      "chunked_fwdbwd_s": {
+        "max": 0.08921498300014719,
+        "mean": 0.08810352725004122,
+        "median": 0.0880181069999253,
+        "min": 0.0870409000001473,
+        "n": 8,
+        "p95": 0.08921498300014719,
+        "stdev": 0.0006432434996658616
+      },
+      "standard_fwdbwd_peak_allocated_bytes": 4499450880,
+      "standard_fwdbwd_peak_reserved_bytes": 4510973952,
+      "standard_fwdbwd_s": {
+        "max": 0.06523331800008236,
+        "mean": 0.06277260487499348,
+        "median": 0.062383654999962346,
+        "min": 0.06143214500002614,
+        "n": 8,
+        "p95": 0.06523331800008236,
+        "stdev": 0.00122769290090879
+      },
+      "standard_logits_bytes_fp32": 1073741824,
+      "tokens": 1024
+    }
+  ],
+  "chunk_size": 256,
+  "dtype": "float32",
+  "embedding_factor": 64,
+  "gradient_parity_relative_l2": 1.0270488246533205e-06,
+  "hidden_size": 512,
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 7905869824,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "run_id": "20261117T065318Z",
+  "saved_at_utc": "2026-11-17T06:53:22.132919+00:00",
+  "vocab": 262144
+}
