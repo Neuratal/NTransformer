@@ -147,6 +147,38 @@
       "note": "v1.0 engineering candidate: training engine (presets, AdamW, cosine, accumulation, clipping, AMP), chunked linear CE (recompute-in-backward), full training checkpoint resume, memory estimator, DDP path, 13 scale presets with measured counts",
       "test_summary": "337 passed, 3 skipped, 1 warning in 33.34s",
       "promoted": false
+    },
+    {
+      "name": "v1.1.0-rc1",
+      "commit": "4733aed",
+      "branch": "feature/final-release-2026-11",
+      "note": "Final engineering pass: MoE gather-once/scatter-once dispatch, fused F.rms_norm (no autocast), meta-init skip + lazy presets (import 13.4->1.3s), engine fixes (full-width head crash, fp16 GradScaler, DDP MoE find_unused_parameters), checkpoint fingerprint validation + optimizer-index guard + scaler state, preset honesty rename (7b->5.6b, 7b-moe->5.7b-moe). Dense prefill fp32 T=128 2.092->1.854 ms; T=512 within ~5%; bf16 ~5-10%. MoE fwd B2/T128 -17%. Not promoted: gains are real but modest; promotion requires \u22651 reproducible axis beyond noise under the registry's own rule \u2014 import time and bf16 T>=128 qualify, but best-version semantics for the architecture are unchanged.",
+      "test_summary": "402 passed, 3 skipped, 1 warning in 44.49s",
+      "promoted": false,
+      "evidence": {
+        "import_time_s": "13.4 -> 1.3",
+        "dense_fp32_prefill_ms": {
+          "T128": "2.092 -> 1.854",
+          "T512": "4.121 -> 3.926",
+          "T1024": "7.479 -> 7.675 (noise)"
+        },
+        "dense_bf16_prefill_ms": {
+          "T512": "3.032 -> 2.725",
+          "T1024": "5.426 -> 5.141"
+        },
+        "moe_module_fwd_ms": {
+          "B2T128": "1.927 -> 1.593",
+          "B4T512": "5.473 -> 5.287"
+        },
+        "chunked_ce_gradient_parity_rel_l2": 1e-06,
+        "tokenizer_fingerprint": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9 (verified)"
+      },
+      "limitations": [
+        "untrained; synthetic data only",
+        "multi-GPU DDP is a single-process smoke test; no multi-node",
+        "MoE dispatch gains are constant-factor; GEMMs dominate at larger sizes",
+        "fp16 path is CUDA-only"
+      ]
     }
   ]
 }
