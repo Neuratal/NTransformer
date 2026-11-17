@@ -3,6 +3,35 @@
 All notable changes to this project are recorded here. Versions are frozen
 once released; history is never rewritten.
 
+## [v1.3.0-candidate] — 2026-11-17
+
+Enterprise-audit hardening release (NT-ENGINEERING-2026-FINAL). Correctness
+fixes in scheduler/checkpoint integrity; no architecture change.
+
+### Fixed
+- **Scheduler state round-trip is now bit-exact.** Scheduler/optimizer
+  scalar state is stored as `int64`/`float64` (was `float32`); every resumed
+  cosine trajectory previously drifted ~1e-7 from uninterrupted training.
+  Verified bitwise at 7 resume points (0, 1, 4, 5, 8, 15, 16), including
+  parameters, optimizer moments, scheduler counter, and losses.
+- **`WarmupCosineSchedule.load_state_dict` validates malformed state**
+  (required keys, integer/finite/range checks, base_lrs length vs param
+  groups) — precise `ValueError` instead of `KeyError`/silent misassignment.
+- **Sharded checkpoints verify per-shard SHA-256** (stored at save, verified
+  at load; default on; `verify_shard_hashes=False` documented for enormous
+  checkpoints with out-of-band verification). Catches same-size stale shard
+  replacement that byte-count checks cannot. Measured 63 ms per 37 MB model.
+
+### Tests
+- 4 new integrity tests; suite: **422 passed, 3 skipped, 1 warning**
+  (`python -m pytest tests`).
+
+### Docs
+- `docs/scheduler_resume_verification.md` (full experiment),
+  `docs/checkpoint_integrity.md`, `docs/bug_registry.md` (v1.3 additions),
+  `docs/final_engineering_audit.md` (this mission's report),
+  `docs/ultimate_audit/*` retained.
+
 ## [v1.2.0-candidate] — 2026-11-17
 
 Engineering-audit release: correctness fixes in the optimizer LR schedule and
