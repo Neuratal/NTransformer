@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "neuratal-transformer"
+version = "1.2.0rc1"
+description = "Neuratal Transformer: a decoder-only, autoregressive Transformer core for the Neuratal language model project (NTokenizer-compatible, vocab 262,144)."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT OR Apache-2.0"
+authors = [{ name = "Neuratal Transformer Contributors" }]
+dependencies = [
+    "torch>=2.4",
+    "safetensors>=0.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "numpy>=1.26",
+]
+
+[tool.setuptools.packages.find]
+include = ["neuratal*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

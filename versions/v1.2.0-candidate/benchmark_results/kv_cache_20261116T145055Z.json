@@ -1,0 +1,92 @@
+{
+  "cells": [
+    {
+      "cache_buffer_bytes_theoretical": 4194304,
+      "cache_length_after_decode": 80,
+      "cached_prefill_median_s": 0.0012330400004429976,
+      "cached_vs_uncached_max_abs_diff": 0.0,
+      "decode_ms_per_token": 0.8789511249460702,
+      "decode_tokens_per_second": 1137.7196884085643,
+      "seq": 64,
+      "uncached_forward_median_s": 0.0011621345001913141
+    },
+    {
+      "cache_buffer_bytes_theoretical": 4194304,
+      "cache_length_after_decode": 144,
+      "cached_prefill_median_s": 0.00166276550044131,
+      "cached_vs_uncached_max_abs_diff": 0.0,
+      "decode_ms_per_token": 0.8682794687047135,
+      "decode_tokens_per_second": 1151.7029205951228,
+      "seq": 128,
+      "uncached_forward_median_s": 0.0015464000007341383
+    },
+    {
+      "cache_buffer_bytes_theoretical": 4194304,
+      "cache_length_after_decode": 272,
+      "cached_prefill_median_s": 0.002300433001437341,
+      "cached_vs_uncached_max_abs_diff": 0.0,
+      "decode_ms_per_token": 0.8614318437594193,
+      "decode_tokens_per_second": 1160.8579451113023,
+      "seq": 256,
+      "uncached_forward_median_s": 0.0021978160002618097
+    },
+    {
+      "cache_buffer_bytes_theoretical": 4194304,
+      "cache_length_after_decode": 528,
+      "cached_prefill_median_s": 0.0034754070002236404,
+      "cached_vs_uncached_max_abs_diff": 0.0,
+      "decode_ms_per_token": 0.8476435313014008,
+      "decode_tokens_per_second": 1179.7412037872616,
+      "seq": 512,
+      "uncached_forward_median_s": 0.003310011497887899
+    }
+  ],
+  "config": {
+    "attention_dropout": 0.0,
+    "attention_implementation": "sdpa",
+    "bos_token_id": null,
+    "cache_capacity": 2048,
+    "device": "cuda",
+    "dtype": "float32",
+    "embedding_size": 32,
+    "eos_token_id": null,
+    "fp32_logits": false,
+    "hidden_dropout": 0.0,
+    "hidden_size": 256,
+    "intermediate_size": 640,
+    "logits_chunk_size": null,
+    "max_position_embeddings": 2048,
+    "num_attention_heads": 4,
+    "num_hidden_layers": 2,
+    "num_key_value_heads": 2,
+    "pad_token_id": null,
+    "rms_norm_eps": 1e-05,
+    "rope_theta": 10000.0,
+    "rotary_dim": 64,
+    "tie_word_embeddings": true,
+    "use_cache": true,
+    "vocab_size": 262144
+  },
+  "decode_tokens_per_call": 16,
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 7986806784,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "run_id": "20261116T145054Z",
+  "saved_at_utc": "2026-11-16T14:50:55.224908+00:00"
+}

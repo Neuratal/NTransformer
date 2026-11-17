@@ -1,0 +1,92 @@
+{
+  "dtype_support": {
+    "bfloat16": {
+      "cpu_matmul": true,
+      "cuda_matmul": true
+    },
+    "float16": {
+      "cpu_matmul": true,
+      "cuda_matmul": true
+    },
+    "float32": {
+      "cpu_matmul": true,
+      "cuda_matmul": true
+    }
+  },
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 8037138432,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "neuratal_transformer_version": "0.1.0",
+  "ntokenizer_manifest": {
+    "base_byte_tokens": 256,
+    "bos_token_id": 262137,
+    "eos_token_id": 262138,
+    "format": "NTOK",
+    "format_version": 3,
+    "merges_count": 261881,
+    "metadata_corpus_manifest_sha256": "2b5a5c523d28b76aa11c371c312814be400cce82d95a0ec37c989b0a7a2cc186",
+    "metadata_created_at": "2026-11-15T13:04:18Z",
+    "model_version": "0.3.0",
+    "normalization": "None",
+    "pad_token_id": 262139,
+    "pretokenizer": "MathSymbolAware",
+    "pretokenizer_version": "1",
+    "schema": "neuratal-tokenizer-manifest/1",
+    "special_tokens": {
+      "<|assistant|>": 262143,
+      "<|bos|>": 262137,
+      "<|eos|>": 262138,
+      "<|pad|>": 262139,
+      "<|system|>": 262141,
+      "<|unk|>": 262140,
+      "<|user|>": 262142
+    },
+    "special_tokens_count": 7,
+    "tokenizer_crate_version": "0.3.0",
+    "tokenizer_name": "ntokenizer-0.3-256k",
+    "tokenizer_sha256": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9",
+    "vocab_size": 262144
+  },
+  "ntokenizer_native_version": "unavailable: No module named 'neuratal_tokenizer'",
+  "nvidia_smi": {
+    "compute_cap": "8.9",
+    "cuda_version": "unavailable: Command '['nvidia-smi', '--query-gpu=cuda_version', '--format=csv,noheader']' returned non-zero exit status 2.",
+    "driver_version": "595.99.02",
+    "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "memory_total_mib": "8188 MiB"
+  },
+  "python": "3.14.4 (main, Aug 20 2026, 10:41:58) [GCC 15.2.0]",
+  "run_id": "20261116T150127Z",
+  "safetensors_version": "0.8.0",
+  "saved_at_utc": "2026-11-16T15:01:28.010994+00:00",
+  "sdpa_backends": {
+    "cudnn[bfloat16]": "ok",
+    "cudnn[float16]": "ok",
+    "cudnn[float32]": "unavailable: No available kernel. Aborting execution.",
+    "efficient[bfloat16]": "ok",
+    "efficient[float16]": "ok",
+    "efficient[float32]": "ok",
+    "flash[bfloat16]": "ok",
+    "flash[float16]": "ok",
+    "flash[float32]": "unavailable: No available kernel. Aborting execution.",
+    "math[bfloat16]": "ok",
+    "math[float16]": "ok",
+    "math[float32]": "ok"
+  }
+}
