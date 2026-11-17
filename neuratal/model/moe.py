@@ -195,16 +195,18 @@ class MoEFFN(nn.Module):
 
         flat_indices = topk_indices.reshape(-1)          # [N * k]
         flat_weights = topk_weights.reshape(-1)          # [N * k]
-        counts = torch.bincount(flat_indices, minlength=self.num_experts).to(torch.float32)
-
         # --- dispatch: sort assignments by expert once ---
+        counts_i64 = torch.bincount(flat_indices, minlength=self.num_experts)  # int64
+        counts = counts_i64.to(torch.float32)
         order = torch.argsort(flat_indices, stable=True)
         sorted_experts = flat_indices.index_select(0, order)
         sorted_tokens = torch.div(order, self.top_k, rounding_mode="floor")
         sorted_weights = flat_weights.index_select(0, order)
 
-        offsets = torch.cumsum(counts.to(torch.long), dim=0) - counts.to(torch.long)
+        offsets = counts_i64.cumsum(dim=0) - counts_i64
         offsets_list = offsets.tolist()  # one host sync, not one per expert
+        total_assignments = num_tokens * self.top_k
+        bounds = offsets_list + [total_assignments]
 
         keep = None
         if self.capacity_factor is not None:
@@ -217,29 +219,42 @@ class MoEFFN(nn.Module):
             ) - offsets.index_select(0, sorted_experts)
             keep = positions < capacity
         dropped = (
-            torch.tensor(0.0, device=device)
+            x.new_zeros((), dtype=torch.float32)
             if keep is None
-            else (num_tokens * self.top_k - keep.sum()).to(torch.float32)
+            else (total_assignments - keep.sum()).to(torch.float32)
         )
 
-        out = x.new_zeros((num_tokens, self.hidden_size))
-        total_assignments = num_tokens * self.top_k
+        # One gather of the routed tokens, one scatter-add at the end. This
+        # replaces E per-expert index_select + index_add rounds with a single
+        # gather and a single scatter (same byte volume, E-1 fewer kernel
+        # launches and no repeated random-access traffic into ``out``).
+        gathered = x.index_select(0, sorted_tokens)
+        contrib_pieces: list[torch.Tensor] = []
+        kept_token_pieces: list[torch.Tensor] = []
         for expert_idx in range(self.num_experts):
-            start = offsets_list[expert_idx]
-            end = offsets_list[expert_idx + 1] if expert_idx + 1 < self.num_experts else total_assignments
+            start = bounds[expert_idx]
+            end = bounds[expert_idx + 1]
             if end <= start:
                 continue
-            token_ids = sorted_tokens[start:end]
+            expert_in = gathered[start:end]
             weights = sorted_weights[start:end]
+            token_ids = sorted_tokens[start:end]
             if keep is not None:
                 keep_slice = keep[start:end]
-                token_ids = token_ids[keep_slice]
+                expert_in = expert_in[keep_slice]
                 weights = weights[keep_slice]
+                token_ids = token_ids[keep_slice]
             if token_ids.numel() == 0:
                 continue
-            expert_out = self.experts[expert_idx](x.index_select(0, token_ids))
-            contribution = expert_out * weights.to(expert_out.dtype).unsqueeze(-1)
-            out = out.index_add(0, token_ids, contribution)
+            expert_out = self.experts[expert_idx](expert_in)
+            contrib_pieces.append(expert_out * weights.to(expert_out.dtype).unsqueeze(-1))
+            kept_token_pieces.append(token_ids)
+
+        out = x.new_zeros((num_tokens, self.hidden_size))
+        if contrib_pieces:
+            contrib = torch.cat(contrib_pieces, dim=0)
+            scatter = sorted_tokens if keep is None else torch.cat(kept_token_pieces, dim=0)
+            out = out.index_add(0, scatter, contrib)
 
         if self.shared_expert is not None:
             out = out + self.shared_expert(x)

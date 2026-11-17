@@ -33,6 +33,8 @@ _CANONICAL = {
     "kv_cache": "kv_cache_results.json",
     "end_to_end": "end_to_end_results.json",
     "memory": "memory_results.json",
+    "moe": "moe_results.json",
+    "chunked_ce": "chunked_ce_results.json",
 }
 
 
