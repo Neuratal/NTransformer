@@ -9,9 +9,9 @@ from neuratal.config import NeuratalConfig
 
 def test_estimator_monotone_in_params():
     small = get_preset("50m")
-    big = get_preset("7b")
+    big = get_preset("5.6b")
     e_small = estimate(small.config, batch_size=2, seq_length=128, name="50m")
-    e_big = estimate(big.config, batch_size=2, seq_length=128, name="7b")
+    e_big = estimate(big.config, batch_size=2, seq_length=128, name="5.6b")
     assert e_big.parameter_bytes > e_small.parameter_bytes * 50
 
 
@@ -20,9 +20,10 @@ def test_logits_chunk_counted():
                          num_attention_heads=1, num_key_value_heads=1,
                          embedding_size=8, intermediate_size=128)
     e = estimate(cfg, batch_size=4, seq_length=512, logits_chunk=128, name="tiny")
-    # logits bytes must be much smaller than seq_length * full vocab * 2 bytes
-    full = 4 * 512 * 262_144 * 2
-    assert e.logits_bytes < full / 2
+    # chunked logits workspace is charged for one chunk in fp32 only:
+    assert e.logits_bytes == 4 * 128 * 262_144 * 4
+    full_fp32 = 4 * 512 * 262_144 * 4
+    assert e.logits_bytes == full_fp32 // 4
 
 
 def test_notes_present():
@@ -31,4 +32,5 @@ def test_notes_present():
                          embedding_size=8, intermediate_size=128)
     e = estimate(cfg, batch_size=1, seq_length=16, name="x")
     assert e.notes
-    assert "AdamW" in e.notes[-1] or "activation" in e.notes[0]
+    assert any("AdamW" in n for n in e.notes)
+    assert any("ESTIMATE" in n for n in e.notes)

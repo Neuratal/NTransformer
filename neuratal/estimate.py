@@ -174,8 +174,9 @@ def estimate(
     per_token = (dense_per_token + moe_per_token) * act_dtype_bytes
     activations = batch_size * seq_length * per_token
 
-    # logits for CE (only one chunk resident at a time)
-    logits_bytes = batch_size * min(seq_length, logits_chunk) * V * 2
+    # logits workspace for chunked CE (one chunk resident; fp32 because the
+    # chunked kernel upcasts to fp32 internally, even for bf16 models)
+    logits_bytes = batch_size * min(seq_length, logits_chunk) * V * 4
 
     kv_bytes = batch_size * L * kv_context * 2 * cfg.num_key_value_heads * cfg.head_dim * act_dtype_bytes
 
@@ -188,9 +189,11 @@ def estimate(
         comm = int(2 * P * grad_dtype_bytes)
 
     notes = [
-        "activation estimate is a family-of-models approximation; measure with torch.cuda.max_memory_allocated for ground truth",
-        "logits assume chunked cross-entropy (256-token chunks); full CE would be B*T*V*4 bytes (impractical at 262k vocab)",
+        "ESTIMATE (closed-form), not a measurement; measure with torch.cuda.max_memory_allocated for ground truth",
+        "activation estimate is a family-of-models approximation; it is not a substitute for profiling",
+        "logits assume chunked cross-entropy (256-token chunks, fp32 workspace); full CE would be B*T*V*4 bytes (impractical at 262k vocab)",
         "optimizer state assumes AdamW with fp32 m/v; Muon/Lion differ",
+        "activation estimate charges top_k experts per token; the 262144-row embedding gradient is included in grad bytes, not in activations",
     ]
     if cfg.is_moe:
         notes.append(

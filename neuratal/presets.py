@@ -3,8 +3,15 @@
 All presets map to real NeuratalConfig values. Parameter counts are computed
 with meta-device construction of NeuratalModel (no formula drift) and stored
 on the Preset dataclass so anything printed by this module is honest.
-Numeric suffixes follow industry convention (e.g. "7b" designates a
-7B-class design; the *measured* parameter count is printed, not the label).
+
+Naming policy
+-------------
+Numeric suffixes are the *rounded measured parameter count*, never a marketing
+target. Presets whose measured count deviated more than ~10% from their old
+nominal label were renamed (e.g. the former "7b" measured 5.57B and is now
+"5.6b"); the architecture geometry notes still state the class of design the
+configuration follows. "13b" (measured 11.92B, -8.3%) and every other preset
+are within 10% of their labels.
 """
 
 from __future__ import annotations
@@ -85,7 +92,7 @@ PRESETS: dict[str, Preset] = {
         "500m": (1536, 20, 24, 2, 4096, 64, 4096, "D=1536 L=20 H=24 KV=2 F=64"),
         "1b":   (2048, 24, 32, 4, 5632, 64, 4096, "D=2048 L=24 H=32 KV=4 F=64"),
         "3b":   (2816, 36, 44, 4, 7600, 96, 4096, "D=2816 L=36 H=44 KV=4 F=96"),
-        "7b":   (4096, 32, 64, 8, 11008, 128, 4096, "D=4096 L=32 H=64 KV=8 F=128 (LLaMA-2-7B class)"),
+        "5.6b":  (4096, 32, 64, 8, 11008, 128, 4096, "D=4096 L=32 H=64 KV=8 F=128 (LLaMA-2-7B-class geometry; measured 5.57B)"),
         "13b":  (5120, 44, 80, 8, 13824, 128, 4096, "D=5120 L=44 H=80 KV=8 F=128 (LLaMA-2-13B class)"),
         "30b":  (8192, 60, 128, 16, 14336, 128, 4096, "D=8192 L=60 H=128 KV=16 F=128"),
         "70b":  (8192, 80, 128, 16, 28672, 128, 8192, "D=8192 L=80 H=128 KV=16 F=128 (dense)"),
@@ -167,7 +174,7 @@ MOE_PRESETS: dict[str, Preset] = {
         # Base geometry matches the dense 75M preset; 8 experts, top-2.
         "small-moe": (640, 14, 10, 2, 1728, 64, 2048, 8, 2, 1728, "75M-class dense geometry"),
         "1b-moe":    (2048, 24, 32, 4, 5632, 64, 4096, 4, 2, 1408, "1B-class"),
-        "7b-moe":    (4096, 32, 64, 8, 11008, 128, 4096, 8, 2, 1408, "LLaMA-2-7B-class geometry"),
+        "5.7b-moe":  (4096, 32, 64, 8, 11008, 128, 4096, 8, 2, 1408, "LLaMA-2-7B-class geometry; measured 5.67B"),
         "30b-moe":   (7168, 40, 56, 8, 18432, 128, 4096, 14, 2, 2048, "30B-class"),
         "100b-moe":  (8192, 64, 64, 8, 22016, 128, 8192, 28, 2, 2048, "100B-class"),
         "200b-moe":  (12288, 72, 96, 12, 32768, 128, 8192, 32, 2, 2048, "200B-class"),

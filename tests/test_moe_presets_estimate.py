@@ -18,7 +18,7 @@ from neuratal.estimate import estimate
 EXPECTED_TOTAL = {
     "small-moe": 402_301_056,
     "1b-moe": 1_074_300_928,
-    "7b-moe": 5_673_062_400,
+    "5.7b-moe": 5_673_062_400,
     "30b-moe": 29_400_112_128,
     "100b-moe": 99_909_378_048,
     "200b-moe": 198_474_149_888,
@@ -27,7 +27,7 @@ EXPECTED_TOTAL = {
 EXPECTED_ACTIVE = {
     "small-moe": 123_609_216,
     "1b-moe": 659_064_832,
-    "7b-moe": 2_351_173_632,
+    "5.7b-moe": 2_351_173_632,
     "30b-moe": 8_260_819_968,
     "100b-moe": 16_157_515_776,
     "200b-moe": 35_399_610_368,
@@ -48,7 +48,7 @@ class TestMoEPresets:
             assert preset.active_parameter_count < preset.parameter_count
 
     def test_meta_breakdown_matches_preset(self):
-        for name in ("small-moe", "1b-moe", "7b-moe"):
+        for name in ("small-moe", "1b-moe", "5.7b-moe"):
             preset = get_moe_preset(name)
             breakdown = parameter_breakdown_meta(preset.config)
             assert breakdown["total"] == preset.parameter_count
@@ -60,7 +60,7 @@ class TestMoEPresets:
             )
 
     def test_dense_presets_keep_active_equal_total(self):
-        for name in ("50m", "75m", "7b"):
+        for name in ("50m", "75m", "5.6b"):
             p = get_preset(name)
             assert p.kind == "dense"
             assert p.active_parameter_count == p.parameter_count

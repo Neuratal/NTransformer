@@ -201,7 +201,7 @@ print(model.active_parameters_per_token())   # architecture-level count
   dense checkpoint into a MoE config (or vice versa) fails with a specific
   error instead of silently mismatching.
 
-Presets: `small-moe`, `1b-moe`, `7b-moe`, `30b-moe`, `100b-moe`, `200b-moe`,
+Presets: `small-moe`, `1b-moe`, `5.7b-moe`, `30b-moe`, `100b-moe`, `200b-moe`,
 `500b-moe`. Counts are measured from the real module tree on the meta device and
 reported as **total** and **active per token**. Every expert still costs
 checkpoint and optimizer storage.
