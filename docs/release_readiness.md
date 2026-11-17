@@ -209,7 +209,7 @@ $ .venv/bin/python -m pytest tests -p no:warnings --tb=no -q
 413 passed, 3 skipped, 1 warning
 
 $ .venv/bin/python -m pytest tests 2>&1 | tail -1
-413 passed, 3 skipped, 1 warning in 44.49s
+413 passed, 3 skipped, 1 warning in 44.01s
 ```
 
 Skipped (exact reasons printed by `pytest -rs`):
@@ -273,14 +273,15 @@ pass; parameter count validation is by meta-device construction only.
 
 - Branch: `feature/final-release-2026-11`
 - Commits (this pass, on top of `feature/moe-integration-2026-11` @ 196a613):
-  `b608fdf` perf(moe) dispatch · `cbcf887` fused rms_norm · `2dbddd9`
+  `b608fdf` MoE dispatch · `cbcf887` fused F.rms_norm · `2dbddd9`
   meta-init/lazy presets · `49cbbc6` engine/checkpoint fixes ·
   `40f731b` chunked-CE bench · `6a33bc4` preset honesty · `4733aed`
-  docs/license/v1.1.0rc1 · `bdbf866` registry/regenerated artifacts
-- Working tree: clean except intentionally untracked
-  `benchmarks/results/*_20261117T*.json` histories (timestamped archives are
-  committed per repo convention; `*_latest.json` regenerated).
-- `master` untouched (still @ 14f6fe0, "snapshot v1.0.0-rc1 frozen").
+  docs/license/v1.1.0rc1 · `bdbf866` registry · `c41103f` docs ·
+  `e54bc42` pathological MoE suite · `1f38fa0` counts → `d9bb7c1`
+  lazy sorted_experts (with README table fixes) · `2bfa282` benchmark
+  refresh (fingerprint re-verified by run)
+- Working tree: clean. `master` untouched (still @ 14f6fe0,
+  "snapshot v1.0.0-rc1 frozen").
 - NTokenizer fingerprint **verified unchanged**:
   `1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9`
   (sha256 of `ntokenizer-0.3-256k.ntok`; file untouched, mtime 2026-11-15).
