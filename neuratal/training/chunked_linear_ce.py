@@ -24,7 +24,9 @@ _IGNORE_INDEX = -100
 class ChunkedLinearCEFunction(torch.autograd.Function):
     @staticmethod
     def forward(ctx, hidden, targets, out_proj_weight, emb_weight, chunk_size, ignore_index):
-        chunk_size = int(chunk_size) if chunk_size else 256
+        chunk_size = int(chunk_size) if chunk_size is not None else 256
+        if chunk_size < 1:
+            raise ValueError(f"chunk_size must be >= 1, got {chunk_size}")
         flat_h = hidden.reshape(-1, hidden.size(-1)).contiguous()
         flat_t = targets.reshape(-1).to(torch.long).contiguous()
         total = flat_h.new_zeros((), dtype=torch.float32)
@@ -94,4 +96,7 @@ class ChunkedLinearCEFunction(torch.autograd.Function):
 def chunked_linear_cross_entropy(hidden, targets, out_proj_weight, emb_weight,
                                  chunk_size: int = 256, ignore_index: int = _IGNORE_INDEX):
     """Returns (sum_loss, n_tokens). Divide by n_tokens externally for mean."""
-    return ChunkedLinearCEFunction.apply(hidden, targets, out_proj_weight, emb_weight, int(chunk_size), ignore_index), (targets.reshape(-1) != ignore_index).sum()
+    chunk_size = int(chunk_size)
+    if chunk_size < 1:
+        raise ValueError(f"chunk_size must be >= 1, got {chunk_size}")
+    return ChunkedLinearCEFunction.apply(hidden, targets, out_proj_weight, emb_weight, chunk_size, ignore_index), (targets.reshape(-1) != ignore_index).sum()

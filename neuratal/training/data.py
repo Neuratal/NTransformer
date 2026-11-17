@@ -72,11 +72,22 @@ class SyntheticTokenDataset(Dataset):
 def train_validation_split(dataset: TokenDataset, val_fraction: float = 0.05) -> tuple[TokenDataset, TokenDataset]:
     if not 0.0 < val_fraction < 1.0:
         raise ValueError(f"val_fraction must be in (0, 1), got {val_fraction}")
+    seq = dataset.sequence_length
     total = dataset.data.numel()
+    # A split only makes sense when BOTH sides can hold at least one sequence.
+    # Each side needs seq + 1 tokens (inputs + the label-shifted next token).
+    # Fail loudly here instead of inside TokenDataset with a confusing message.
+    if total < 2 * seq + 2:
+        raise ValueError(
+            f"corpus too small for a train/validation split: {total} tokens < {2 * seq + 2} "
+            f"(sequence_length={seq}); need at least {2 * seq + 2} tokens so both splits "
+            f"can hold one full sequence"
+        )
     val_tokens = int(total * val_fraction)
     # split at a sequence boundary: [train | val]
-    boundary = (total - val_tokens) // dataset.sequence_length * dataset.sequence_length
-    boundary = max(dataset.sequence_length, min(boundary, total - dataset.sequence_length))
+    boundary = (total - val_tokens) // seq * seq
+    # keep at least one full sequence (plus label token) on each side
+    boundary = max(seq + 1, min(boundary, total - seq - 1))
     train = TokenDataset(dataset.data[:boundary], dataset.sequence_length)
     val = TokenDataset(dataset.data[boundary:], dataset.sequence_length)
     return train, val

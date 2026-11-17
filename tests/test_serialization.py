@@ -259,8 +259,13 @@ def test_sharded_missing_hash_entry_rejected(tmp_path):
         load_pretrained_sharded(ckpt)
 
 
-def test_sharded_legacy_index_without_hashes_loads(tmp_path):
-    """Indexes written before shard hashes existed still load (total_size check only)."""
+def test_sharded_legacy_index_without_hashes_rejected_or_warns(tmp_path):
+    """Indexes without shard_hashes fail closed by default; opt-out loads with a warning.
+
+    v1.4 made verification fail-closed (BUG-04): default ``verify_shard_hashes=True``
+    refuses a hash-less index outright; ``verify_shard_hashes=False`` loads it with a
+    UserWarning instead of silently skipping verification.
+    """
     from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
 
     model = make_model()
@@ -270,4 +275,7 @@ def test_sharded_legacy_index_without_hashes_loads(tmp_path):
     index = json.loads(index_path.read_text())
     del index["metadata"]["shard_hashes"]
     index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
-    load_pretrained_sharded(ckpt)  # must not raise just because hashes are absent
+    with pytest.raises(ValueError, match="does not record shard_hashes"):
+        load_pretrained_sharded(ckpt)
+    with pytest.warns(UserWarning, match="shard_hashes"):
+        load_pretrained_sharded(ckpt, verify_shard_hashes=False)

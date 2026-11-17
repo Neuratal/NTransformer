@@ -28,6 +28,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
+import re
+import warnings
 from pathlib import Path
 from typing import Optional, Union
 
@@ -81,6 +84,43 @@ def plan_shards(
     return shards
 
 
+_INDEX_FILENAME_RE = re.compile(r"^model-(\d{5})-of-(\d{5})\.safetensors$")
+
+
+def _validated_shard_path(checkpoint_dir: Path, filename: object) -> Path:
+    """Resolve a weight_map shard name to a contained, regular file.
+
+    ``weight_map`` values are attacker-controlled when a checkpoint is loaded
+    from an untrusted source: reject anything that is not a plain
+    ``model-NNNNN-of-NNNNN.safetensors`` filename, any absolute path, any
+    traversal/backslash trick, and any resolved path escaping the checkpoint
+    directory or landing on a symlink outside it.
+    """
+    if not isinstance(filename, str):
+        raise ValueError(f"shard filename must be a string, got {type(filename).__name__}")
+    name = filename.strip()
+    m = _INDEX_FILENAME_RE.fullmatch(name)
+    if m is None:
+        raise ValueError(
+            f"shard filename {filename!r} is not a valid model-NNNNN-of-NNNNN.safetensors name; "
+            "absolute paths, traversal segments and non-standard names are refused"
+        )
+    resolved = (checkpoint_dir / name).resolve()
+    base = checkpoint_dir.resolve()
+    try:
+        resolved.relative_to(base)
+    except ValueError:
+        raise ValueError(
+            f"shard {filename!r} resolves outside the checkpoint directory ({base}); refused"
+        ) from None
+    if not resolved.is_file():
+        raise ValueError(
+            f"missing shard {filename!r} referenced by {INDEX_FILENAME} "
+            f"(or not a regular file in {base})"
+        )
+    return resolved
+
+
 def save_pretrained_sharded(
     model: NeuratalModel,
     output_dir: Union[str, Path],
@@ -94,32 +134,47 @@ def save_pretrained_sharded(
     state_dict = model.state_dict()
     _check_no_shared_storage(state_dict)
 
-    shards = plan_shards(state_dict, max_shard_bytes=max_shard_bytes)
-    count = len(shards)
-    weight_map: dict[str, str] = {}
-    shard_hashes: dict[str, str] = {}
-    for idx, shard in enumerate(shards, start=1):
-        filename = f"model-{idx:05d}-of-{count:05d}.safetensors"
-        for name in shard:
-            weight_map[name] = filename
-        path = output_dir / filename
-        _atomic_save_safetensors(shard, path)
-        shard_hashes[filename] = _sha256(path)
+    pre_existing = {p.name for p in output_dir.iterdir()} if output_dir.is_dir() else set()
+    written: list[Path] = []
+    try:
+        shards = plan_shards(state_dict, max_shard_bytes=max_shard_bytes)
+        count = len(shards)
+        weight_map: dict[str, str] = {}
+        shard_hashes: dict[str, str] = {}
+        for idx, shard in enumerate(shards, start=1):
+            filename = f"model-{idx:05d}-of-{count:05d}.safetensors"
+            for name in shard:
+                weight_map[name] = filename
+            path = output_dir / filename
+            _atomic_save_safetensors(shard, path)
+            written.append(path)
+            shard_hashes[filename] = _sha256(path)
 
-    total_size = sum(t.numel() * t.element_size() for t in state_dict.values())
-    index = {
-        "metadata": {
-            "format_version": SHARDED_FORMAT_VERSION,
-            "architectures": [ARCHITECTURE_NAME],
-            "total_size": total_size,
-            "num_shards": count,
-            "shard_hashes": shard_hashes,
-        },
-        "weight_map": weight_map,
-    }
-    _atomic_write_text(output_dir / INDEX_FILENAME, json.dumps(index, indent=2, sort_keys=True))
-    config_payload = build_config_payload(model)
-    _atomic_write_text(output_dir / CONFIG_FILENAME, json.dumps(config_payload, indent=2, sort_keys=True))
+        total_size = sum(t.numel() * t.element_size() for t in state_dict.values())
+        index = {
+            "metadata": {
+                "format_version": SHARDED_FORMAT_VERSION,
+                "architectures": [ARCHITECTURE_NAME],
+                "total_size": total_size,
+                "num_shards": count,
+                "shard_hashes": shard_hashes,
+            },
+            "weight_map": weight_map,
+        }
+        _atomic_write_text(output_dir / INDEX_FILENAME, json.dumps(index, indent=2, sort_keys=True))
+        config_payload = build_config_payload(model)
+        _atomic_write_text(output_dir / CONFIG_FILENAME, json.dumps(config_payload, indent=2, sort_keys=True))
+    except BaseException:
+        # An interrupted save must not leave orphan shards behind. Only files
+        # created by THIS call are removed; pre-existing shards are never
+        # touched (they may come from a previous, valid checkpoint).
+        for path in written:
+            if path.name not in pre_existing:
+                try:
+                    path.unlink()
+                except OSError:
+                    pass
+        raise
     return output_dir
 
 
@@ -156,18 +211,25 @@ def load_pretrained_sharded(
         )
 
     device = str(map_location) if map_location is not None else "cpu"
-    shard_files = sorted(set(weight_map.values()))
+    shard_files = [
+        _validated_shard_path(checkpoint_dir, name) for name in sorted(set(weight_map.values()))
+    ]
     if not shard_files:
         raise ValueError(f"{INDEX_FILENAME} has an empty weight_map")
     shard_hashes = metadata.get("shard_hashes")
     if shard_hashes is not None and not isinstance(shard_hashes, dict):
         raise ValueError(f"{INDEX_FILENAME} metadata.shard_hashes must be an object")
     recorded_hashes = {str(k): str(v) for k, v in (shard_hashes or {}).items()}
-    if verify_shard_hashes and recorded_hashes:
-        for filename in shard_files:
-            shard_path = checkpoint_dir / filename
-            if not shard_path.is_file():
-                raise ValueError(f"missing shard {filename} referenced by {INDEX_FILENAME}")
+    if verify_shard_hashes:
+        if not recorded_hashes:
+            raise ValueError(
+                f"{INDEX_FILENAME} does not record shard_hashes; refusing to load an "
+                f"unverified sharded checkpoint (the format written by this version always "
+                f"records per-shard SHA-256). Pass verify_shard_hashes=False to load "
+                f"unverified at your own risk, or re-save the checkpoint."
+            )
+        for shard_path in shard_files:
+            filename = shard_path.name
             want = recorded_hashes.get(filename)
             if want is None:
                 raise ValueError(f"{INDEX_FILENAME} shard_hashes is missing an entry for {filename!r}")
@@ -177,11 +239,16 @@ def load_pretrained_sharded(
                     f"shard {filename} failed SHA-256 verification: metadata records "
                     f"{want}, file hashes to {got} (the shard was modified or replaced)"
                 )
+    elif not recorded_hashes:
+        warnings.warn(
+            f"{INDEX_FILENAME} does not record shard_hashes; loading shards WITHOUT "
+            "any integrity verification (verify_shard_hashes=False).",
+            UserWarning,
+            stacklevel=2,
+        )
     state_dict: dict[str, torch.Tensor] = {}
-    for filename in shard_files:
-        shard_path = checkpoint_dir / filename
-        if not shard_path.is_file():
-            raise ValueError(f"missing shard {filename} referenced by {INDEX_FILENAME}")
+    for shard_path in shard_files:
+        filename = shard_path.name
         try:
             shard = _st_load_file(str(shard_path), device=device)
         except Exception as exc:
@@ -200,9 +267,10 @@ def load_pretrained_sharded(
 
     # Integrity check: bytes on disk == bytes recorded at save time. A stale
     # or partially truncated shard file that still parses as safetensors
-    # would otherwise load silently.
+    # would otherwise load silently. A missing/non-integer total_size is a
+    # malformed index and is rejected (fail closed).
     total_size = metadata.get("total_size")
-    if isinstance(total_size, int):
+    if not isinstance(total_size, bool) and isinstance(total_size, int):
         actual_size = sum(t.numel() * t.element_size() for t in state_dict.values())
         if actual_size != total_size:
             raise ValueError(
@@ -210,6 +278,19 @@ def load_pretrained_sharded(
                 f"loaded tensors hold {actual_size} (a shard was replaced with stale or "
                 "different content)"
             )
+    else:
+        if verify_shard_hashes:
+            raise ValueError(
+                f"{INDEX_FILENAME} metadata.total_size is missing or not an integer; "
+                "refusing to load a malformed sharded index. Pass verify_shard_hashes=False "
+                "to load unverified at your own risk."
+            )
+        warnings.warn(
+            f"{INDEX_FILENAME} metadata.total_size is missing or not an integer; "
+            "skipping the byte-count check (verify_shard_hashes=False).",
+            UserWarning,
+            stacklevel=2,
+        )
 
     config = NeuratalConfig.from_dict(payload["config"])
     model = NeuratalModel(config)

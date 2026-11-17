@@ -7,14 +7,16 @@ no datasets are bundled and no model quality claims are made. Every claim in
 this file is either measured on the development machine or explicitly labeled
 as an estimate.
 
-> **Status: v1.2.0-candidate (engineering audit candidate).** The framework installs,
-> tests green (418 passed, 3 skipped, 1 warning), and small
+> **Status: v1.4.0-candidate (bug-remediation candidate).** The framework installs,
+> tests green (460 passed, 3 skipped, 3 warnings), and small
 > dense/MoE training runs end-to-end on the 8 GB development GPU with
 > synthetic data. **No real corpus has been used; no weights of a trained
 > model exist. This is not a production-ready serving system and not a
 > training recipe for any scale above ~100M.** See
 > [Known limitations](#known-limitations) and
-> [Scale readiness](#scale-readiness-honest).
+> [Scale readiness](#scale-readiness-honest). Two-process CPU gloo DDP is
+> verified (dense and MoE, with exact parity against the single-process
+> reference); multi-GPU/NCCL is **not** verified on this hardware (single GPU).
 
 ## What this is (and is not)
 
@@ -232,13 +234,17 @@ forward/backward/optimizer cycle with the 262k vocabulary. See
 | `13b`–`500b` | yes | yes | meta only | no | no | no | no | no | no | no |
 | MoE small/75M-class | yes | yes | yes | yes | yes | yes | yes | no | no | no |
 | MoE ≥1B | yes | yes | meta only | no | no | no | no | no | no | no |
+| DDP (2-proc gloo, CPU) | yes | yes | yes | yes | yes | yes | yes (CPU) | no (1 GPU) | yes (gloo) | no |
 
 - "Meta tested" = module tree builds on the meta device and counts are exact.
   No forward pass has ever run for presets above ~100M (they do not fit).
-- Multi-GPU: only a single-process gloo DDP smoke test exists. **No
-  multi-GPU or multi-node training has been performed or validated anywhere
-  in this project.** DDP code paths exist; they are not load-tested, and
-  MoE+DDP global router statistics are per-rank.
+- Multi-GPU: as of v1.4.0-candidate, **two-process CPU gloo DDP is validated**
+  for dense and MoE models (optimizer steps, gradient all-reduce parity with
+  the single-process reference, checkpoint save/resume after a DDP run). On
+  this development machine (one GPU), **no multi-GPU or multi-node NCCL
+  training has been performed or validated**; MoE+DDP global router
+  statistics remain per-rank. DDP over CPU/gloo is a correctness check of the
+  reducer, not a qualification of distributed throughput.
 
 ## Benchmarks
 
@@ -272,15 +278,18 @@ Benchmark suites: `benchmark_environment`, `benchmark_tokenizer`,
 ## Testing
 
 ```bash
-python -m pytest tests/ -q          # full suite: 422 passed, 3 skipped, 1 warning
+python -m pytest tests/ -q          # full suite: 460 passed, 3 skipped, 3 warnings
 python -m pytest tests/ --basetemp=/path/on/a/large/filesystem/tmp   # if /tmp is a small tmpfs
 python -m pytest tests/ -k cuda     # CUDA-only subset
+python -m pytest tests/test_v14_regressions.py   # v1.4 bug-remediation regression suite
 ```
 
 - Skipped: 1 CPU-only device-mismatch probe (needs CUDA device-mismatch),
   1 artifact-dependent integration test (covered in the integration suite),
   1 integration CUDA probe.
-- Warning: a Triton FP-fusion notice from a CUDA test (third-party, benign).
+- Warnings: a Triton FP-fusion notice from a CUDA test (third-party, benign),
+  and two resume tests assert an intentional `UserWarning` about
+  schedule/loop-bound mismatch policy.
 - New in this pass: `tests/test_engine_regressions.py` — full-width tied
   head training step (regression: engine used to crash with
   `embedding_size=None`), tokenizer-fingerprint accept/reject on resume,
@@ -312,7 +321,8 @@ python -m pytest tests/ -k cuda     # CUDA-only subset
 
 ## Project boundaries (V1)
 
-Implemented: architecture, inference, training engine (single GPU, DDP smoke),
+Implemented: architecture, inference, training engine (single GPU; 2-process
+CPU gloo DDP verified in v1.4),
 chunked cross-entropy, dense presets 50M–500B (measured counts), opt-in MoE
 with presets, local sharded checkpoints, closed-form memory estimator,
 token-level synthetic pipelines. Not implemented: real-corpus pretraining,

@@ -40,6 +40,12 @@ class WarmupCosineSchedule:
 
     Driven by global optimizer step (not micro-step); scheduler state is
     saved/restored as plain ints via state_dict.
+
+    LR contract (v1.4): the param groups hold ``lr_at(0)`` after construction
+    (the first optimizer step), and each ``step()`` call advances them to the
+    next schedule position — after *k* calls groups hold ``lr_at(k)``. After
+    ``total_steps`` scheduler steps the groups hold ``lr_at(total_steps)``,
+    i.e. the ``min_lr_ratio * base_lr`` floor exactly.
     """
 
     def __init__(self, optimizer: torch.optim.Optimizer, warmup_steps: int, total_steps: int,
@@ -77,9 +83,14 @@ class WarmupCosineSchedule:
                     f"invalid scheduler state values: step={self._step}, "
                     f"warmup_steps={self.warmup_steps}, total_steps={self.total_steps}"
                 )
+            if self.warmup_steps >= self.total_steps:
+                raise ValueError(
+                    f"invalid scheduler state: warmup_steps ({self.warmup_steps}) must be "
+                    f"< total_steps ({self.total_steps}); refusing to install a nonsense schedule"
+                )
         except TypeError as exc:
             raise ValueError(f"scheduler state has invalid field types: {exc}") from exc
-        restored_lrs = self._require_finite_float_list("base_lrs", state["base_lrs"])
+        restored_lrs = self._require_finite_float_list("base_lrs", state["base_lrs"], positive=True)
         if len(restored_lrs) != len(self.base_lrs):
             raise ValueError(
                 f"scheduler state base_lrs has length {len(restored_lrs)} but this optimizer "
@@ -87,10 +98,10 @@ class WarmupCosineSchedule:
             )
         self.base_lrs = restored_lrs
         # Reapply the LR the param groups held at save time: the groups always
-        # hold lr_at(_step - 1) for _step >= 1 (lr_at(0) when saved at step 0).
-        # This keeps a resumed run's first optimizer step at exactly the LR
-        # the interrupted run would have used.
-        self._apply(self.lr_at(max(self._step - 1, 0)))
+        # hold lr_at(_step) (lr_at(0) when saved at step 0). This keeps a
+        # resumed run's first optimizer step at exactly the LR the interrupted
+        # run would have used.
+        self._apply(self.lr_at(self._step))
 
     def _apply(self, lrs: list[float]) -> None:
         for group, lr in zip(self.optimizer.param_groups, lrs):
@@ -115,7 +126,7 @@ class WarmupCosineSchedule:
         return fvalue
 
     @staticmethod
-    def _require_finite_float_list(name: str, value) -> list[float]:
+    def _require_finite_float_list(name: str, value, *, positive: bool = False) -> list[float]:
         if not isinstance(value, (list, tuple)):
             raise TypeError(f"{name} must be a list of numbers, got {type(value).__name__}")
         out: list[float] = []
@@ -125,6 +136,8 @@ class WarmupCosineSchedule:
             fvalue = float(item)
             if not math.isfinite(fvalue):
                 raise ValueError(f"{name}[{i}] must be finite, got {item!r}")
+            if positive and fvalue <= 0.0:
+                raise ValueError(f"{name}[{i}] must be a positive learning rate, got {item!r}")
             out.append(fvalue)
         return out
 
@@ -139,9 +152,14 @@ class WarmupCosineSchedule:
         return [base * (min_lr + (1.0 - min_lr) * cosine) for base in self.base_lrs]
 
     def step(self) -> None:
+        # Advance to the NEXT schedule position before computing the LR, so
+        # that after k step() calls the param groups hold lr_at(k). With the
+        # construction-time lr_at(0), the first optimizer step runs at lr_at(0),
+        # the second at lr_at(1), ..., and the total_steps-th scheduler step
+        # lands exactly on lr_at(total_steps) (the min_lr floor).
+        self._step += 1
         lrs = self.lr_at(self._step)
         self._apply(lrs)
-        self._step += 1
 
     @property
     def current_step(self) -> int:

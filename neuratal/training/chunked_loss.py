@@ -61,6 +61,8 @@ def chunked_cross_entropy(
 
     total_loss = flat_h.new_zeros(())
     chunk = int(chunk_size)
+    if chunk < 1:
+        raise ValueError(f"chunk_size must be >= 1, got {chunk_size}")
     for start in range(0, flat_h.size(0), chunk):
         h_chunk = flat_h[start:start + chunk]
         t_chunk = flat_t[start:start + chunk]

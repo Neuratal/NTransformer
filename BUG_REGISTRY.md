@@ -1,36 +1,47 @@
-# NTransformer — Consolidated Bug Registry (v1.3.0-candidate @ `d17391d`)
+# NTransformer — Consolidated Bug Registry (v1.4.0-candidate @ HEAD of `fix/v1.4-bug-remediation-2026-11`)
 
-All confirmed defects, their severity, status, and regression evidence. Complements `docs/bug_registry.md` (v1.2) and `docs/ultimate_audit/bug_registry.md` (v1.1/v1.2).
+All confirmed defects, their severity, status, and regression evidence, mapped
+one-to-one to the independent v1.3 audit's original finding IDs. Complements
+`docs/bug_registry.md` (v1.3) and `docs/ultimate_audit/bug_registry.md` (v1.1/v1.2).
+Original audit report: `/home/justerdem14/.cache/ntransformer_audit/NTRANSFORMER_BUG_HUNT_REPORT.md`
+(audited `7d6bf9466171d2b7ab9ff2364890fa8ed1fb0dd9`).
 
-## Registry
+## v1.4 resolution of the independent v1.3 audit findings
 
-| ID | Severity | Component | Finding → Fix | Status | Regression test |
-|---|---|---|---|---|---|
-| B-2021-1 | critical (crash) | training engine | `core.output_projection.out_proj.weight` dereferenced unconditionally; full-width tied heads (`embedding_size=None`) crashed on first step → `_head_out_proj_weight()` returns `None`, chunked CE handles it | FIXED (v1.1 `49cbbc6`) | `test_full_width_train_step_and_checkpoint` |
-| B-2021-2 | high | training engine | fp16 autocast ran **unscaled** (under/overflow risk) → GradScaler with unscale-before-clip, state checkpointed & restored | FIXED (v1.1 `49cbbc6`) | `test_fp16_step_and_scaler_resume` |
-| B-2021-3 | high (distributed) | training engine | DDP MoE: zero-token experts never enter autograd → reducer wedges → `find_unused_parameters=True` for MoE (dense keeps fast default) | FIXED (v1.1 `49cbbc6`) | suite green; **multi-GPU untested (labeled)** |
-| B-2021-4 | high | training/checkpoint.py | resume did not verify recorded tokenizer fingerprint → mismatch silently resumed against wrong tokenizer → validation + arch guard + optimizer-index guard | FIXED (v1.1 `49cbbc6`) | 4 fingerprint tests |
-| B-2021-5 | low | model/moe.py | `torch.tensor(0.0, device=…)` H2D scalar in drop path → `new_zeros` | FIXED (v1.1 `b608fdf`) | suite green |
-| B-2022-1 | medium | training/optim.py | fresh `WarmupCosineSchedule` left groups at full base LR for step 0 (warmup never covered it) → apply `lr_at(0)` at construction | FIXED (v1.2 `27c7f78`) | `test_scheduler_fresh_applies_warmup_lr` |
-| B-2022-1b | **high** | training/optim.py | `load_state_dict` never pushed restored LR into param groups → first post-resume optimizer step ran at construction LR (silent mid-cosine jump) → reapply `lr_at(step-1)` | FIXED (v1.2 `27c7f78`) | `test_scheduler_resume_applies_resumed_lr` |
-| B-2022-3 | medium | training/optim.py | `base_lrs` accepted at any length → silent group↔LR misassignment → length check → `ValueError` | FIXED (v1.2 `27c7f78`) | `test_scheduler_base_lrs_length_mismatch_rejected` |
-| B-2022-4 | medium (integrity) | serialization/sharded.py | `total_size` recorded but never re-verified at load → same-size stale replacement passed → byte-count check added | FIXED (v1.2 `eeed9b4`) | `test_sharded_total_size_integrity_check` |
-| B-2022-5 | low | serialization/sharded.py | duplicated `_atomic_save_safetensors` (drift risk) → deduplicated, anti-aliasing shared | FIXED (v1.2 `eeed9b4`) | sharded suite |
-| B-2022-6 | low | model/moe.py | `sorted_experts` computed even without capacity → lazy | FIXED (v1.1 `d9bb7c1`) | MoE suite |
-| **B-2023-1** | **high (silent)** | training/checkpoint.py | scheduler/optimizer scalar state stored as **float32** → entire resumed cosine trajectory drifted ~1e-7 from uninterrupted → int64/float64 storage, **bitwise-exact round-trip** | **FIXED (v1.3 `7939bbe`)** | `docs/scheduler_resume_verification.md` (7 resume points) |
-| **B-2023-2** | medium | training/optim.py | `load_state_dict` accepted malformed state (missing keys → `KeyError`, NaN ratios, negative steps) → required-key + type/range/finiteness validation | **FIXED (v1.3 `7939bbe`)** | scheduler suite |
-| **B-2023-3** | medium (integrity) | serialization/sharded.py | same-size stale shard replacement passed byte-count check → **per-shard SHA-256** recorded at save, verified at load (default on) | **FIXED (v1.3 `7939bbe`)** | `test_sharded_tampered_shard_rejected` |
-| RMSNorm (aux) | medium (perf/numerics) | model/normalization.py | autocast-promoted fused weighted path was numerically worse (0.0156 err) → fused normalize-without-weight + explicit fp32 weight mul | FIXED (v1.2 `65830db`) | norm suite + parity checks |
+| Original ID | Severity | Original evidence | Investigation result | Fix commit/file | Regression test | Final status |
+|---|---|---|---|---|---|---|
+| BUG-01 | HIGH | CONFIRMED (gloo, deterministic) | DDP `find_unused_parameters=True` marked factored-head `out_proj.weight` "ready (unused)"; hook fired later through the external chunked-CE → reducer raised "marked as ready twice" on step 1. Reproduced on v1.3 export | `neuratal/training/engine.py` (`_DDPLossModule`, joint hidden-only+chunked-CE inside the wrapped forward) | `tests/test_v14_regressions.py::TestDDPEndToEnd` (6 tests: factored/full-width × dense/MoE, grad accumulation, DDP checkpoint resume) + 2-proc CPU gloo bitwise parity vs single-process | **FIXED (v1.4)** |
+| BUG-02 | MEDIUM | CONFIRMED | `scheduler.step()` and `global_step` advanced even when `scaler.step()` skipped the optimizer update (non-finite unscaled grads). Also: bf16/fp32 had NO non-finite guard — AdamW silently absorbed NaN grads (inf×0 masks) and poisoned weights; verified empirically | `neuratal/training/engine.py` (finite gate on unscaled norm; skipped steps logged, not scheduled; `iteration_cap`) | `tests/test_v14_regressions.py::TestEngineStockFp16::test_engine_skips_step_on_nonfinite_grad_norm`, `test_fp16_overflow_skips_lr_advance` | **FIXED (v1.4)** |
+| BUG-03 | MEDIUM | CONFIRMED | `weight_map` shard filenames used verbatim as paths; absolute `/` paths and `..` traversal opened files outside the checkpoint dir | `neuratal/serialization/sharded.py` (`_validated_shard_path`: regex `^model-\d{5}-of-\d{5}\.safetensors$`, resolved-path containment, regular-file check) | `tests/test_v14_regressions.py::TestShardedIntegrity::test_absolute/relative/nonstandard_*` | **FIXED (v1.4)** |
+| BUG-04 | MEDIUM | CONFIRMED | `verify_shard_hashes=True` silently skipped verification when `shard_hashes` absent/falsy (corrupted same-size shard loaded silently); `total_size` check silently skipped when absent | `neuratal/serialization/sharded.py` (fail-closed raises for absent/empty `shard_hashes` or missing/non-integer `total_size`; loud opt-out warning) | `tests/test_v14_regressions.py::TestShardedIntegrity::test_missing_shard_hashes_fails_closed/_optout_warns/test_missing_total_size_*` + updated `tests/test_serialization.py::test_sharded_legacy_index_without_hashes_rejected_or_warns` | **FIXED (v1.4)** |
+| BUG-05 | LOW | CONFIRMED | `step()` applied `lr_at(self._step)` without incrementing first; `lr_at(0)` applied twice; whole schedule retarded one optimizer step; min-LR floor never reached | `neuratal/training/optim.py` (increment-then-apply; resume restores `lr_at(_step)`) | `tests/test_v14_regressions.py::TestSchedulerContract` (4 tests) | **FIXED (v1.4)** |
+| BUG-06 | LOW | CONFIRMED (gaps) / POSSIBLE (impact) | `load_state_dict` accepted `warmup ≥ total_steps` and non-positive `base_lrs`; resume crashed in constructor with `max_steps < saved warmup`; loop bound vs scheduler `total_steps` split silently | `neuratal/training/optim.py` (cross-field + positivity validation), `neuratal/training/engine.py` (constructor built on a validated placeholder on resume; checkpointed schedule wins; warning on mismatch) | `tests/test_v14_regressions.py::TestSchedulerValidation` (4 tests) | **FIXED (v1.4)** |
+| BUG-07 | LOW | CONFIRMED | estimator charged fp32 gradients at 2 bytes (default `grad_dtype_bytes=2` even for `float32` configs) | `neuratal/estimate.py` (dtype-derived default: 4 for fp32, 2 otherwise; explicit override respected; invalid values rejected) | `tests/test_v14_regressions.py::TestEstimator` (3 tests) | **FIXED (v1.4)** |
+| STRONG-01 | — | STRONG | Dense DDP worked by incidental hook firing; MoE DDP warned "did not find any unused parameters" (false positive) | **Resolved by BUG-01's joint-forward wrapper** — all reducer-relevant params are consumed inside the wrapped forward; 2-proc validation matrix confirms; residual `find_unused_parameters=True` warning documented as benign (zero-token experts still need it) | `TestDDPEndToEnd` | **FIXED (v1.4, by construction)** |
+| STRONG-02 | — | STRONG | Interrupted `save_pretrained_sharded` left orphan shards behind | `neuratal/serialization/sharded.py` (save tracks shards written by this call; on failure removes only those, never pre-existing files) | `tests/test_v14_regressions.py::TestShardedIntegrity::test_interrupted_save_leaves_no_new_shards` | **FIXED (v1.4)** |
+| STRONG-03 | — | STRONG | Sharded index file itself unauthenticated (hashes can be recomputed by an attacker editing index+shards) | Not fixed by design — signing/MAC over metadata changes the format contract and is out of scope; residual risk documented; fail-closed SHA-256 (BUG-04) covers accidental corruption only | — | **CONFIRMED BUT NOT FIXED (documented design limitation; mitigations landed)** |
+| POSSIBLE-01 | — | POSSIBLE | Resume with different `total_steps` than checkpoint — unspecified semantics | Resolved as part of BUG-06: checkpointed schedule always wins; requested loop bound honored; a `UserWarning` is issued; extra steps run at the min-LR floor | `test_resume_with_smaller_max_steps_does_not_crash_and_warns`, `test_resume_with_larger_max_steps_warns_and_floors` | **RESOLVED (v1.4)** |
+| POSSIBLE-02 | — | POSSIBLE | `resume_training_checkpoint` silently skipped absent CUDA RNG keys; no message when devices differ from checkpoint | `neuratal/training/checkpoint.py` (loud warnings for missing CPU RNG, saved-but-now-unavailable CUDA devices, missing per-device RNG) | `tests/test_v14_regressions.py::TestResumeWarnings` | **FIXED (v1.4)** |
+| POSSIBLE-03 | — | POSSIBLE | `chunk_size=0` silently became 256; **negative chunk sizes produced zero loss silently** | `neuratal/training/chunked_linear_ce.py` and `chunked_loss.py` (raise `ValueError` for `< 1`) | `tests/test_v14_regressions.py::TestChunkedCEChunkSize` | **FIXED (v1.4)** |
+| POSSIBLE-04 | — | POSSIBLE | `train_validation_split` on tiny corpora crashed cryptically inside `TokenDataset`; boundary could be under-clamped | `neuratal/training/data.py` (clear up-front error at the split point; correct `[seq+1, total-seq-1]` clamp) | `tests/test_v14_regressions.py::TestValidationSplit` | **FIXED (v1.4)** |
+| POSSIBLE-05 | — | POSSIBLE | `parse_ntok_file` read the whole file before size/CRC validation | `neuratal/integration/manifest.py` (header-only read; size/CRC/cap validation before payload read; payload read bounded by declared `payload_len`; unused whole-file "raw" read dropped) | `tests/test_v14_regressions.py::TestNtokParser` (sparse-fixture tests) | **FIXED (v1.4)** |
+| POSSIBLE-06 | — | POSSIBLE | `DeltaNetCache.commit()` incremented `_length` before checking `max_position_embeddings`, leaving it over limit on failure | `neuratal/model/gated_delta_net.py` (check-then-increment) | `tests/test_v14_regressions.py::TestDeltaNetCacheCommit` | **FIXED (v1.4)** |
+| HIST-01 | MEDIUM (branch) | CONFIRMED on `cand/v0.7-sliding-window` | `reference_attention` ignores the sliding window (full causal attention; silent); SDPA path correct | Branch-only (SWA rejected, never merged); v1.4 contains no sliding-window code; documented for future revival; NOT fixed (would reintroduce rejected-candidate code) | — | **BRANCH-ONLY / NOT APPLICABLE** |
+| HIST-02 | LOW (branch) | CONFIRMED (documented) | GDN WY-chunkwise cumprod underflow for chunk > 64 (documented limitation, `registry/best_version.json`) | Branch-only; not in v1.4; documented | — | **BRANCH-ONLY / NOT APPLICABLE** |
+| HIST-03 | LOW | CONFIRMED (fixed v0.7.1) | Master/v0.7-candidate crash: default `swa_window=512` vs small `max_position_embeddings` | Fixed upstream on `cand/v0.7-sliding-window`; not applicable to v1.4 (no `swa_window` field) | — | **FIXED UPSTREAM / NOT APPLICABLE** |
+| HIST-04 | INFO | CONFIRMED | Snapshot/registry version drift (README 418 vs HEAD 422; registry heading citing stale commit) | Docs updated in v1.4 (README, this registry, CHANGELOG, snapshot) | `diff` of snapshot vs HEAD in freeze step | **FIXED (v1.4, docs)** |
 
-## Closed / verified-not-a-bug
+## Historical fixed defects (carried forward; independently re-verified)
 
-| Item | Resolution |
-|---|---|
-| CUDA RNG restore `torch.cuda.set_rng_state(state.cpu(), i)` | works byte-exactly (my initial probe was wrong; code was right) — regression test added (`test_cuda_rng_restore_exact`) |
-| All-ignored-target loss backward (`ignore_index=-100`) | backpropagates zeros, no NaN/inf — verified |
-| `torch.compile(MoE)` / `torch._grouped_mm` / cuDNN forcing | all measured, all within noise or worse — **not adopted** (see rejected_experiments.md) |
-| `test_engine.py:111` skipped | covered by artifact-dependent integration suite — intentional |
-| Two transient test failures | **disk quota** (`/tmp` tmpfs exhaustion), not code — `--basetemp` documented |
+| ID | Severity | Status |
+|---|---|---|
+| B-2020-x (v1.0–1.2 audit family) | mixed | FIXED (see v1.2/v1.3 registries) |
+| B-2021-1 … B-2021-5 | critical/high/low | FIXED, verified in both v1.3 and v1.4 (incl. residual fp16 gap → BUG-02) |
+| B-2022-1 … B-2022-6 | medium/low | FIXED, verified in both v1.3 and v1.4 |
+| B-2023-1 | high (silent) | FIXED, verified (bitwise resume re-verified in v1.3 and v1.4) |
+| B-2023-2 | medium | FIXED with remaining gaps → BUG-06 fixed in v1.4 |
+| B-2023-3 | medium (integrity) | FIXED, verified (same-size stale shard rejected; fail-open remainder → BUG-04 fixed in v1.4) |
+| RMSNorm autocast | medium | FIXED, verified (bitwise equal to manual path under CUDA autocast) |
 
 ## Open / advisory (not defects, documented)
 
@@ -38,12 +49,17 @@ All confirmed defects, their severity, status, and regression evidence. Compleme
 |---|---|---|
 | O-1 | informational | `use_reentrant=True` in legacy `chunked_loss.py` — deprecated but correct in this build |
 | O-2 | informational | shuffle-order data replay after resume is re-permuted (documented) |
-| O-3 | medium (untested) | DDP MoE fix untested on multi-GPU — no hardware available |
+| O-3 | medium | **DDP validated on 2-process CPU gloo only; no multi-GPU/NCCL hardware here — distributed throughput unproven** |
 | O-4 | informational | no power-loss fault injection; atomic rename ≠ power-loss proof |
 | O-5 | informational | activation memory estimator ±50 % beyond dev scale |
-| O-6 | informational | benchmark noise ±10–20 % on this GPU; sub-10 % deltas discarded |
-| O-7 | informational | no hash-pinned pip requirements; documented |
+| O-6 | informational | benchmark noise ±10–20 % on this GPU |
+| O-7 | informational | sharded index unauthenticated (STRONG-03) |
 
-## Severity tally
+## Severity tally (v1.4)
 
-1 critical · 3 high · 4 medium · 2 low · rest informational. **None open critical/high — all fixed with tests.**
+- Fixed from independent audit: **1 HIGH (BUG-01), 3 MEDIUM (BUG-02/03/04), 3 LOW (BUG-05/06/07)**.
+- STRONG findings: **2 fixed** (STRONG-01 via BUG-01's joint-forward design; STRONG-02 orphan-shard cleanup), **1 confirmed but not fixed by design** (STRONG-03, documented).
+- POSSIBLE findings: **6 fixed** (POSSIBLE-01..06).
+- Historical findings: 4 handled (HIST-01/02 documented branch-only; HIST-03 fixed upstream; HIST-04 docs drift fixed).
+- Open critical: **0**. Open high: **0**. Open confirmed medium/low: **0**. Open advisory: **1** (O-3, environmental — no multi-GPU hardware available).
+- Suite: **460 passed, 3 skipped, 3 warnings** (was 422 in v1.3).

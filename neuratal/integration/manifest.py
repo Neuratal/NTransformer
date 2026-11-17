@@ -52,28 +52,36 @@ def parse_ntok_file(path: Union[str, Path]) -> dict[str, Any]:
     """Parse and validate an .ntok file's header + payload structure.
 
     Verifies: magic, format_version, CRC-32 of the payload, and total length.
-    Returns a dict with the payload JSON and derived fields. Does not interpret
-    the BPE table beyond structural validation.
+    The header is read first and the payload read is bounded by the header's
+    declared ``payload_len`` — a file whose header claims an oversized payload
+    (or whose declared size does not match the actual file) is rejected without
+    ever reading or buffering its contents. Returns a dict with the payload
+    JSON and derived fields. Does not interpret the BPE table beyond structural
+    validation.
     """
     path = Path(path)
     if not path.is_file():
         raise ManifestError(f"tokenizer file does not exist: {path}")
-    data = path.read_bytes()
-    if len(data) < HEADER_STRUCT.size:
-        raise ManifestError(f"file too small for an NTOK header: {path} ({len(data)} bytes)")
-    magic, version, crc, payload_len = HEADER_STRUCT.unpack_from(data, 0)
+    file_size = path.stat().st_size
+    with open(path, "rb") as handle:
+        header = handle.read(HEADER_STRUCT.size)
+    if len(header) < HEADER_STRUCT.size:
+        raise ManifestError(f"file too small for an NTOK header: {path} ({len(header)} bytes)")
+    magic, version, crc, payload_len = HEADER_STRUCT.unpack_from(header, 0)
     if magic != MAGIC:
         raise ManifestError(f"bad magic {magic!r} in {path} (expected b'NTOK')")
     if version not in (1, 2, 3):
         raise ManifestError(f"unsupported NTOK format_version {version} in {path}")
     if payload_len > MAX_PAYLOAD_BYTES:
         raise ManifestError(f"payload_len {payload_len} exceeds 1 GiB in {path}")
-    if len(data) != HEADER_STRUCT.size + payload_len:
+    if file_size != HEADER_STRUCT.size + payload_len:
         raise ManifestError(
             f"file size mismatch in {path}: header says {HEADER_STRUCT.size + payload_len} bytes, "
-            f"file is {len(data)} bytes (truncation, splicing, or trailing garbage)"
+            f"file is {file_size} bytes (truncation, splicing, or trailing garbage)"
         )
-    payload = data[HEADER_STRUCT.size:]
+    with open(path, "rb") as handle:
+        handle.seek(HEADER_STRUCT.size)
+        payload = handle.read(payload_len)
     actual_crc = zlib.crc32(payload) & 0xFFFFFFFF
     if actual_crc != crc:
         raise ManifestError(f"CRC-32 mismatch in {path}: file is corrupt")
@@ -84,7 +92,7 @@ def parse_ntok_file(path: Union[str, Path]) -> dict[str, Any]:
     for key in ("vocab", "merges", "special_tokens"):
         if key not in doc:
             raise ManifestError(f"payload missing required section {key!r} in {path}")
-    return {"path": path, "format_version": version, "payload": doc, "raw": data}
+    return {"path": path, "format_version": version, "payload": doc}
 
 
 def _sha256(path: Union[str, Path], chunk: int = 1 << 20) -> str:

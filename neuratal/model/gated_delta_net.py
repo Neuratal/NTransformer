@@ -95,13 +95,16 @@ class DeltaNetCache:
             raise RuntimeError("commit() without a preceding forward in this pass")
         if num_tokens != self._pending:
             raise RuntimeError(f"commit({num_tokens}) != tokens written ({self._pending})")
-        self._length += num_tokens
-        self._pending = 0
-        if self._length > self.max_position_embeddings:
+        new_length = self._length + num_tokens
+        if new_length > self.max_position_embeddings:
+            # Do NOT advance past the limit: leaving _length behind that failed
+            # commit keeps the cache in a consistent, inspectable state.
             raise ValueError(
-                f"DeltaNetCache stream length {self._length} exceeds "
+                f"DeltaNetCache stream length {new_length} exceeds "
                 f"max_position_embeddings={self.max_position_embeddings}"
             )
+        self._length = new_length
+        self._pending = 0
 
     def reset(self) -> None:
         self._length = 0

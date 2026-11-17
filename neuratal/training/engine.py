@@ -11,16 +11,22 @@ Design contract:
 - FP16 mixed precision uses ``torch.autocast`` + ``torch.amp.GradScaler``
   (loss scaling, unscale-before-clip, skipped step on non-finite grads); the
   scaler state is checkpointed and restored on resume.
-- DDP: ``find_unused_parameters=True`` is set when the model is an MoE
-  (a micro-batch may legitimately route zero tokens to some expert, and a
-  parameter that never enters the autograd graph would otherwise wedge the
-  reducer). Dense models keep the default fast path.
+- DDP: every parameter used by the loss is consumed **inside the wrapped
+  forward** (see ``_DDPLossModule``), so the reducer never has to reason
+  about parameters consumed outside it. ``find_unused_parameters=True`` is
+  still set when the model is an MoE (a micro-batch may legitimately route
+  zero tokens to some expert, and a parameter that never enters the autograd
+  graph would otherwise wedge the reducer).
 - Loss normalization: average per-token loss over supervised tokens.
 - MoE router auxiliary/z losses are added to the main LM loss exactly once per
   micro-batch (they are already coefficient-weighted, scalar mean terms).
 - Resume restores model + optimizer + scheduler + RNG + counters exactly.
-- Training forward enters through ``model(..., output_hidden_only=True)`` so a
-  DDP wrapper's reducer preparation is not bypassed.
+- Non-finite gradient norms (inf/nan, from any precision path) cause the
+  optimizer step — and the LR schedule — to be skipped loudly; the weights
+  are never poisoned. Skipped steps do not advance ``global_step``.
+- Training forward enters through ``model(..., output_hidden_only=True)`` on the
+  single-process path (or the joint loss module in DDP) so DDP's reducer
+  preparation is not bypassed.
 """
 
 from __future__ import annotations
@@ -28,6 +34,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -96,12 +103,43 @@ def _head_out_proj_weight(core: torch.nn.Module):
     """Output-projection weight for the tied head, or None for full-width embeddings.
 
     ``OutputProjection.out_proj`` is None when embedding_size == hidden_size;
-    the chunked cross-entropy handles that case natively. (Previously the
-    engine unconditionally dereferenced ``.out_proj.weight`` and crashed for
-    full-width head configs.)
+    the chunked cross-entropy handles that case natively.
     """
     out_proj = core.output_projection.out_proj
     return out_proj.weight if out_proj is not None else None
+
+
+class _DDPLossModule(torch.nn.Module):
+    """Internal DDP-facing joint forward: hidden-only encoding + chunked LM loss.
+
+    DDP's reducer contracts on parameters in the wrapped forward's autograd
+    graph. The v1.x engine applied the tied LM head *outside* the wrapped
+    forward (inside :func:`chunked_linear_cross_entropy`), so
+    ``output_projection.out_proj.weight`` never appeared in the forward graph.
+    Combined with ``find_unused_parameters=True`` the reducer marked that
+    parameter "ready (unused)" at the end of the forward, and its autograd
+    hook firing during backward crashed the reducer with "marked as ready
+    twice" (every factorized-tied-head MoE, on the first backward).
+
+    This module performs hidden-only encoding *and* the chunked LM loss inside
+    one wrapped forward, so every reducer-relevant parameter (including the
+    factorized tied head's ``out_proj.weight``) is consumed inside the forward
+    graph. The loss path is exactly the chunked cross-entropy — mathematically
+    identical to the external version, at O(chunk) memory (no full logits).
+    """
+
+    def __init__(self, model: NeuratalModel):
+        super().__init__()
+        self.model = model
+
+    def forward(self, input_ids, labels):  # -> (sum_loss, n_tokens, MoEStats|None)
+        out = self.model(input_ids=input_ids, output_hidden_only=True, return_aux=True)
+        hidden, moe_stats = out
+        total_loss, n_tok = chunked_linear_cross_entropy(
+            hidden, labels, _head_out_proj_weight(self.model),
+            self.model.embed_tokens.embedding_weight,
+        )
+        return total_loss, n_tok, moe_stats
 
 
 def _moe_log_fields(stats_sum, micro_count: int) -> dict:
@@ -138,7 +176,11 @@ def train(
     max_steps: Optional[int] = None,
     resume_from: Optional[str] = None,
 ):
-    """Run training. Returns (model, history) — no side effects on global state.
+    """Run training. Returns ``(model, history)`` — no side effects on global state.
+
+    The returned model is the caller's (unwrapped, ``NeuratalModel``) in every
+    configuration, including under DDP. DDP wraps an internal joint-loss module
+    (``_DDPLossModule``) for the lifetime of the call only.
 
     ``resume_from`` restores optimizer/scheduler/RNG/step counters from a
     training-checkpoint directory. The model weights are expected to be loaded
@@ -146,28 +188,44 @@ def train(
     explicit. Data-order parity is exact for ``shuffle=False``; with shuffling,
     the stream is re-permuted from the restored RNG state (documented, not
     claimed as bit-identical data replay).
+
+    On resume, the checkpoint's own LR schedule (including its ``total_steps``)
+    always wins: if the requested ``max_steps``/``cfg.max_steps`` differ from the
+    restored ``total_steps``, the checkpointed schedule is kept and a
+    ``UserWarning`` is issued (extra steps run at the ``min_lr`` floor).
     """
     rank, world_size = init_distributed()
     is_main = rank == 0
     set_seed(cfg.seed + rank)
     model = model.to(cfg.device)
+    ddp_model: Optional[torch.nn.Module] = None
     if world_size > 1:
         local_rank = rank % max(1, torch.cuda.device_count())
         device_ids = [local_rank] if cfg.device == "cuda" else None
-        core_cfg = (model.module if hasattr(model, "module") else model).config
-        model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=device_ids,
+        wrapper = _DDPLossModule(model).to(cfg.device)
+        ddp_model = torch.nn.parallel.DistributedDataParallel(
+            wrapper, device_ids=device_ids,
             # An MoE micro-batch can route zero tokens to some expert; a
             # parameter that never enters the autograd graph would otherwise
-            # wedge the DDP reducer (towel in also for mixed dense/MoE stacks).
-            find_unused_parameters=bool(core_cfg.is_moe),
+            # wedge the reducer (the same holds for mixed dense/MoE stacks).
+            find_unused_parameters=bool(model.config.is_moe),
         )
+    train_module = ddp_model if ddp_model is not None else model
 
-    optimizer = build_optimizer(model, name="adamw", learning_rate=cfg.learning_rate,
+    optimizer = build_optimizer(train_module, name="adamw", learning_rate=cfg.learning_rate,
                                 weight_decay=cfg.weight_decay)
-    total_steps = max_steps or cfg.max_steps
-    scheduler = WarmupCosineSchedule(optimizer, warmup_steps=cfg.warmup_steps,
-                                     total_steps=total_steps, min_lr_ratio=cfg.min_lr_ratio)
+    requested_total = max_steps or cfg.max_steps
+    if resume_from is not None:
+        # The checkpoint's own schedule wins on resume — construct with
+        # arguments guaranteed to pass validation, then let resume restore
+        # warmup_steps/total_steps from the checkpoint (which revalidates).
+        ctor_total = max(1, requested_total)
+        ctor_warmup = min(cfg.warmup_steps, ctor_total - 1)
+        scheduler = WarmupCosineSchedule(optimizer, warmup_steps=ctor_warmup,
+                                         total_steps=ctor_total, min_lr_ratio=cfg.min_lr_ratio)
+    else:
+        scheduler = WarmupCosineSchedule(optimizer, warmup_steps=cfg.warmup_steps,
+                                         total_steps=requested_total, min_lr_ratio=cfg.min_lr_ratio)
     use_amp = cfg.precision in ("bfloat16", "float16") and _device_of(model).type == "cuda"
     amp_dtype = torch.bfloat16 if cfg.precision == "bfloat16" else torch.float16
     use_scaler = cfg.precision == "float16" and _device_of(model).type == "cuda"
@@ -189,6 +247,20 @@ def train(
         )
         global_step = int(meta["global_step"])
         tokens_seen = int(meta["tokens_seen"])
+        if requested_total != scheduler.total_steps:
+            message = (
+                f"resume schedule/loop bound mismatch: max_steps/cfg.max_steps={requested_total} "
+                f"but the checkpoint restores scheduler total_steps={scheduler.total_steps}; "
+                f"the checkpointed LR schedule wins"
+            )
+            if requested_total > scheduler.total_steps:
+                message += (
+                    f"; training {requested_total - scheduler.total_steps} extra step(s) "
+                    f"will run at the min_lr floor"
+                )
+            warnings.warn(message, UserWarning, stacklevel=2)
+
+    total_steps = requested_total
 
     from torch.utils.data import DataLoader
     from neuratal.training.data import collate
@@ -211,11 +283,30 @@ def train(
                 data_iter = iter(dl)
                 break
 
-    def forward_hidden(ids):
-        # Enters through the (possibly DDP-wrapped) module's forward.
-        return model(input_ids=ids, output_hidden_only=True, return_aux=True)
+    def joint_loss(ids, labels):
+        # Enters only through the (possibly DDP-wrapped) joint loss module on
+        # the multi-process path, or the raw forward on the single-process path.
+        if ddp_model is not None:
+            return ddp_model(ids, labels)
+        hidden, moe_stats = model(input_ids=ids, output_hidden_only=True, return_aux=True)
+        total_loss, n_tok = chunked_linear_cross_entropy(
+            hidden, labels,
+            _head_out_proj_weight(core),
+            core.embed_tokens.embedding_weight,
+        )
+        return total_loss, n_tok, moe_stats
 
-    for step in range(global_step + 1, total_steps + 1):
+    iteration_cap = max(total_steps + 1000, 4 * total_steps)
+    iterations = 0
+    while global_step < total_steps:
+        iterations += 1
+        if iterations > iteration_cap:
+            raise RuntimeError(
+                f"training stopped after {iterations} iterations with only "
+                f"{global_step}/{total_steps} optimizer steps completed — too many "
+                f"consecutive non-finite gradient steps; aborting rather than hanging forever"
+            )
+        step = global_step + 1  # optimizer-step index used for logs/cadence
         model.train()
         optimizer.zero_grad(set_to_none=True)
         # Accumulators stay as detached tensors; no per-micro-step host sync.
@@ -233,12 +324,7 @@ def train(
             ids = batch["input_ids"].to(cfg.device, non_blocking=True)
             labels = batch["labels"].to(cfg.device, non_blocking=True)
             with torch.autocast(device_type=_device_of(model).type, dtype=amp_dtype, enabled=use_amp):
-                hidden, moe_stats = forward_hidden(ids)
-                total_loss, n_tok = chunked_linear_cross_entropy(
-                    hidden, labels,
-                    _head_out_proj_weight(core),
-                    core.embed_tokens.embedding_weight,
-                )
+                total_loss, n_tok, moe_stats = joint_loss(ids, labels)
                 lm_loss = total_loss / n_tok.clamp_min(1)
                 aux_loss = (
                     moe_stats.aux_loss
@@ -282,12 +368,33 @@ def train(
 
         if use_scaler:
             scaler.unscale_(optimizer)
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
+            grad_norm = torch.nn.utils.clip_grad_norm_(train_module.parameters(), cfg.grad_clip_norm)
             scaler.step(optimizer)   # no-op when non-finite grads were found
             scaler.update()
+            skipped = not bool(torch.isfinite(grad_norm))
         else:
-            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
-            optimizer.step()
+            grad_norm = torch.nn.utils.clip_grad_norm_(train_module.parameters(), cfg.grad_clip_norm)
+            if bool(torch.isfinite(grad_norm)):
+                optimizer.step()
+                skipped = False
+            else:
+                # Non-finite grads (bf16/fp32 path): refuse to poison the weights;
+                # treat exactly like a GradScaler skip — LR schedule not advanced.
+                skipped = True
+        if skipped:
+            print(
+                f"[step {step}] non-finite gradient norm ({float(grad_norm)}); "
+                "optimizer step and LR schedule SKIPPED (weights unchanged)",
+                flush=True,
+            )
+            history.append({
+                "step": step,
+                "iteration": iterations,
+                "tokens_seen": tokens_seen,
+                "grad_norm": float(grad_norm) if torch.isfinite(grad_norm) else None,
+                "skipped": True,
+            })
+            continue
         scheduler.step()
         global_step += 1
 
@@ -297,6 +404,7 @@ def train(
             main_loss = float((main_sum / max(1, micro_done)).item())
             entry = {
                 "step": step,
+                "iteration": iterations,
                 "tokens_seen": tokens_seen,
                 "lr": lr,
                 "grad_norm": float(grad_norm),
@@ -337,7 +445,7 @@ def train(
                     labels = batch["labels"].to(cfg.device, non_blocking=True)
                     with torch.autocast(device_type=_device_of(model).type, dtype=amp_dtype,
                                         enabled=use_amp):
-                        hidden, _ = forward_hidden(ids)
+                        hidden = model(input_ids=ids, output_hidden_only=True, return_aux=False)
                         total_loss, n_tok = chunked_linear_cross_entropy(
                             hidden, labels,
                             _head_out_proj_weight(core),

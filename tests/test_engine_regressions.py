@@ -241,9 +241,9 @@ def test_scheduler_resume_applies_resumed_lr():
     assert base_lr == pytest.approx(1e-3 / 10)  # warmup LR after fresh construction
     sched2.load_state_dict(sched.state_dict())
     assert sched2.current_step == 4
-    # resume restores the exact LR the groups held at save time (lr_at(3))
+    # resume restores the exact LR the groups held at save time (lr_at(4))
     assert opt2.param_groups[0]["lr"] == pytest.approx(lr_after_4)
-    assert opt2.param_groups[0]["lr"] == pytest.approx(sched.lr_at(3)[0])
+    assert opt2.param_groups[0]["lr"] == pytest.approx(sched.lr_at(4)[0])
 
 
 def test_scheduler_base_lrs_length_mismatch_rejected():

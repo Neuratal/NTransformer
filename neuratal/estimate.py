@@ -16,6 +16,7 @@ memory accounting for factorized tied-embedding Transformers:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Optional
 
 import torch
 
@@ -84,7 +85,7 @@ def estimate(
     *,
     batch_size: int = 8,
     seq_length: int = 1024,
-    grad_dtype_bytes: int = 2,
+    grad_dtype_bytes: Optional[int] = None,
     act_dtype_bytes: int = 2,
     logits_chunk: int = 256,
     master_fp32: bool = True,
@@ -100,6 +101,10 @@ def estimate(
     actually trains; ``zero1``/``zero2``/``zero3``/``fsdp`` are accounting
     models for future work. Tensor/pipeline/expert parallelism are deliberately
     rejected rather than silently approximated.
+
+    ``grad_dtype_bytes`` defaults to the parameter dtype implied by
+    ``config.dtype`` (4 for float32, 2 otherwise) — an explicit override is
+    always honored.
     """
     if batch_size < 1 or seq_length < 1:
         raise ValueError("positive dims required")
@@ -110,7 +115,6 @@ def estimate(
             f"strategy must be one of {SUPPORTED_STRATEGIES}, got {strategy!r}; "
             "tensor/pipeline/expert parallelism are not implemented"
         )
-
     cfg = config
     breakdown = parameter_breakdown_meta(cfg)
     P = breakdown["total"]
@@ -120,12 +124,20 @@ def estimate(
     if cfg.dtype == "float32":
         act_dtype_bytes = 4
         param_dtype_bytes = 4
+        if grad_dtype_bytes is None:
+            grad_dtype_bytes = 4
     elif cfg.dtype in ("bfloat16", "float16"):
         act_dtype_bytes = 2
         param_dtype_bytes = 2
+        if grad_dtype_bytes is None:
+            grad_dtype_bytes = 2
     else:
         act_dtype_bytes = 2
         param_dtype_bytes = 2
+        if grad_dtype_bytes is None:
+            grad_dtype_bytes = 2
+    if not isinstance(grad_dtype_bytes, int) or grad_dtype_bytes < 1:
+        raise ValueError(f"grad_dtype_bytes must be a positive integer, got {grad_dtype_bytes!r}")
 
     # --- per-rank parameter/gradient/optimizer accounting ---
     shard = world_size if strategy in ("zero1", "zero2", "zero3", "fsdp") else 1

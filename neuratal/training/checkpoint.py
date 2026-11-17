@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import warnings
 from pathlib import Path
 from typing import Any, Optional, Union
 
@@ -268,6 +269,43 @@ def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, 
     # --- RNG ---
     if "trainer.rng_cpu" in tensors:
         torch.set_rng_state(tensors["trainer.rng_cpu"].cpu())
+    else:
+        warnings.warn(
+            "training checkpoint does not record a CPU RNG state; the CPU generator "
+            "keeps the current seed",
+            UserWarning,
+            stacklevel=2,
+        )
+    saved_cuda = sorted(
+        int(k[len("trainer.rng_cuda_"):])
+        for k in tensors
+        if k.startswith("trainer.rng_cuda_") and k[len("trainer.rng_cuda_"):].isdigit()
+    )
+    current_cuda = torch.cuda.device_count() if torch.cuda.is_available() else 0
+    if saved_cuda and current_cuda == 0:
+        warnings.warn(
+            f"training checkpoint records CUDA RNG state for device(s) {saved_cuda} but CUDA "
+            "is unavailable on this machine; those generators keep the current seed",
+            UserWarning,
+            stacklevel=2,
+        )
+    elif saved_cuda:
+        missing = [i for i in saved_cuda if i >= current_cuda]
+        if missing:
+            warnings.warn(
+                f"training checkpoint records RNG for CUDA device(s) {missing} but this "
+                f"machine exposes only {current_cuda} device(s); those generators were not restored",
+                UserWarning,
+                stacklevel=2,
+            )
+        unrecorded = [i for i in range(current_cuda) if f"trainer.rng_cuda_{i}" not in tensors]
+        if unrecorded:
+            warnings.warn(
+                f"training checkpoint does not record RNG for CUDA device(s) {unrecorded}; "
+                "those generators keep the current seed",
+                UserWarning,
+                stacklevel=2,
+            )
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
             key = f"trainer.rng_cuda_{i}"
