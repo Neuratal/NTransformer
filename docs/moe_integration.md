@@ -172,7 +172,7 @@ these presets reaches that bar.
 |---|---|---:|---:|---|---|---|---|---|
 | A | 75M dense | 77,088,896 | 77,088,896 | ✅ | ✅ | ✅ measured, 0.86 GiB | ⚠️ DDP path exists, not measured at scale | ❌ no |
 | B | 1B-MoE | 1,074,300,928 | 659,064,832 | ✅ | ✅ | ❌ not run (optimizer/params alone exceed 8 GB) | ⚠️ DDP path only, untested | ❌ no |
-| C | 7B-MoE | 5,673,062,400 | 2,351,173,632 | ✅ | ✅ | ❌ no | ❌ no ZeRO/FSDP implementation | ❌ no |
+| C | 5.7B-MoE (formerly "7b-moe") | 5,673,062,400 | 2,351,173,632 | ✅ | ✅ | ❌ no | ❌ no ZeRO/FSDP implementation | ❌ no |
 | D | 30B-MoE | 29,400,112,128 | 8,260,819,968 | ✅ | ✅ | ❌ no | ❌ no | ❌ no |
 | E | 100B-MoE | 99,909,378,048 | 16,157,515,776 | ✅ | ✅ | ❌ no | ❌ no | ❌ no |
 | F | 200B-MoE | 198,474,149,888 | 35,399,610,368 | ✅ | ✅ | ❌ no | ❌ no | ❌ no |
