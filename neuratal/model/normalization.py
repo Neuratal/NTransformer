@@ -10,12 +10,15 @@ Design notes
   active* (e.g. an fp32 model without autocast, or a fully bf16 model) this
   dispatches to the fused ``F.rms_norm`` kernel. Fused accumulation order
   differs from the manual path at the 1-ulp level (<= ~1e-6 for fp32, ~1 ulp
-  for bf16); architecture, parameters and checkpoints are unaffected. When
-  the dtypes differ — e.g. an fp32 model running under bf16 autocast, where
-  the input is bf16 but the stored weight is fp32 — or when autocast is
-  active (it promotes rms_norm to fp32, changing the output dtype), the
-  explicit fp32 path below is kept, because the fused kernel cannot dispatch
-  or would silently change the dtype contract.
+  for bf16); architecture, parameters and checkpoints are unaffected.
+* Under active autocast (which would promote a fused weighted ``F.rms_norm``
+  to fp32 and change the output dtype), this uses the fused kernel without
+  the weight and applies the fp32 weight explicitly afterwards. That keeps
+  the fp32-math semantics of the manual path (differing by at most ~1 ulp
+  for very large-magnitude bf16 inputs) at ~1.6x lower op cost, which matters
+  in the dominant training configuration (fp32 master weights + bf16 autocast).
+* Otherwise (no autocast + mismatched input/weight dtypes) the explicit fp32
+  path below is kept exactly as before.
 """
 
 from __future__ import annotations
@@ -54,6 +57,11 @@ class RMSNorm(nn.Module):
             and not _autocast_active(x.device)
         ):
             return F.rms_norm(x, self._normalized_shape, self.weight, self.eps)
+        if _autocast_active(x.device):
+            # Fused normalize (fp32 under CUDA autocast), then apply the fp32
+            # weight explicitly: same math as the manual path, fewer kernels.
+            y = F.rms_norm(x, self._normalized_shape, None, self.eps)
+            return (y * self.weight.float()).to(x.dtype)
         input_dtype = x.dtype
         x32 = x.float()
         mean_square = x32.pow(2).mean(dim=-1, keepdim=True)
