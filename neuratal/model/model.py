@@ -59,6 +59,11 @@ class NeuratalModel(nn.Module):
     @staticmethod
     def _init_module(module: nn.Module) -> None:
         if isinstance(module, (nn.Linear, nn.Embedding)):
+            # Meta tensors carry no storage; running normal_ on them dispatches
+            # through the slow fake-tensor paths (seconds per large preset) for
+            # nothing. Skip initialization entirely in that case.
+            if module.weight.device.type == "meta":
+                return
             nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     # ------------------------------------------------------------------
