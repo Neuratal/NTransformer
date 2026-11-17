@@ -204,6 +204,27 @@
         "end-to-end performance deltas within GPU clock noise (\u00b110-20%)",
         "fp16 path CUDA-only"
       ]
+    },
+    {
+      "name": "v1.3.0-candidate",
+      "branch": "feature/v1.3-enterprise-2026-11",
+      "note": "Enterprise-audit hardening: scheduler state round-trip now bit-exact (float64 scalar storage; verified at 7 resume points incl. params/moments/losses bitwise), load_state_dict validates malformed state, sharded checkpoints verify per-shard SHA-256 (default on; same-size stale shard replacement now detectable), RMSNorm autocast verified. No architecture change. 422 passed.",
+      "test_summary": "422 passed, 3 skipped, 1 warning in 44.28s",
+      "promoted": false,
+      "evidence": {
+        "resume_bit_exact": "docs/scheduler_resume_verification.md \u2014 K in {0,1,4,5,8,15,16}: LRs/params/optimizer-state/losses all torch.equal",
+        "scheduler_state_validation": "test_scheduler_* (fresh/resume/mismatch) + base_lrs length guard",
+        "sharded_sha256": "test_sharded_tampered_shard_rejected (63 ms per 37 MiB measured)",
+        "tokenizer_fingerprint": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9 (verified pre/post)",
+        "test_count_audit": "0 removed/renamed across 196a613 -> 5d13af9 -> 3976a5d -> HEAD; '428' never existed"
+      },
+      "limitations": [
+        "untrained; synthetic data only",
+        "multi-GPU untested (single-process gloo smoke only)",
+        "no crash-consistency fault injection",
+        "NTokenizer integration skips are environment-dependent (moved checkouts skip 40+)",
+        "NTokenizer repo has no git history (reported; owner action required)"
+      ]
     }
   ]
 }
