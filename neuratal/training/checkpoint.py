@@ -44,6 +44,7 @@ def save_training_checkpoint(
     tokenizer_fingerprint: Optional[str] = None,
     scheduler_name: str = "warmup_cosine",
     precision: str = "bfloat16",
+    grad_scaler=None,
 ) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -79,6 +80,13 @@ def save_training_checkpoint(
     if torch.cuda.is_available():
         for i in range(torch.cuda.device_count()):
             state[f"trainer.rng_cuda_{i}"] = torch.cuda.get_rng_state(i).to(torch.uint8)
+    if grad_scaler is not None and hasattr(grad_scaler, "state_dict"):
+        sd = grad_scaler.state_dict()
+        state["trainer.grad_scaler.scale"] = torch.tensor([float(sd["scale"])], dtype=torch.float32)
+        state["trainer.grad_scaler.growth_factor"] = torch.tensor([float(sd["growth_factor"])], dtype=torch.float32)
+        state["trainer.grad_scaler.backoff_factor"] = torch.tensor([float(sd["backoff_factor"])], dtype=torch.float32)
+        state["trainer.grad_scaler.growth_interval"] = torch.tensor([int(sd["growth_interval"])], dtype=torch.long)
+        state["trainer.grad_scaler._growth_tracker"] = torch.tensor([int(sd["_growth_tracker"])], dtype=torch.long)
 
     _atomic_save_safetensors(state, output_dir / TRAINER_STATE_FILE)
     model_cfg = core.config
@@ -126,13 +134,23 @@ def load_training_checkpoint(checkpoint_dir: Union[str, Path], map_location: str
 
 
 def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, Path],
-                               map_location: str = "cpu", *, model=None) -> dict[str, Any]:
+                               map_location: str = "cpu", *, model=None,
+                               expected_tokenizer_fingerprint: Optional[str] = None,
+                               grad_scaler=None) -> dict[str, Any]:
     """Restore optimizer/scheduler/RNG state from a checkpoint directory.
 
     Optimizer tensors are moved to each parameter's device, so a checkpoint
     written on CPU resumes correctly on CUDA (and vice versa).  When ``model``
     is supplied, its dense/MoE architecture is checked against the recorded
     checkpoint metadata before any state is installed.
+
+    If ``expected_tokenizer_fingerprint`` is given it is compared against the
+    fingerprint recorded in ``trainer_meta.json``; a mismatch (or a checkpoint
+    with no recorded fingerprint) raises :class:`ValueError` instead of
+    resuming with the wrong tokenizer. Pass ``None`` to skip the check.
+
+    If ``grad_scaler`` (a ``torch.amp.GradScaler``) is given, its loss scale /
+    growth tracker are restored from the checkpoint when present.
     """
     checkpoint_dir = Path(checkpoint_dir)
     state_path = checkpoint_dir / TRAINER_STATE_FILE
@@ -142,6 +160,20 @@ def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, 
 
     meta_path = checkpoint_dir / TRAINER_META_FILE
     meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.is_file() else {}
+    recorded_fingerprint = meta.get("tokenizer_fingerprint")
+    if expected_tokenizer_fingerprint is not None:
+        if recorded_fingerprint is None:
+            raise ValueError(
+                f"checkpoint {checkpoint_dir} does not record a tokenizer_fingerprint; "
+                f"refusing to resume with expected fingerprint {expected_tokenizer_fingerprint!r}. "
+                "Pass expected_tokenizer_fingerprint=None to bypass."
+            )
+        if recorded_fingerprint != expected_tokenizer_fingerprint:
+            raise ValueError(
+                f"tokenizer fingerprint mismatch: checkpoint {checkpoint_dir} records "
+                f"{recorded_fingerprint!r}, expected {expected_tokenizer_fingerprint!r}; "
+                "refusing to resume — the model was trained with a different tokenizer."
+            )
     if model is not None:
         core = model.module if hasattr(model, "module") else model
         expected_arch = "moe" if core.config.is_moe else "dense"
@@ -153,6 +185,27 @@ def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, 
             )
 
     # --- optimizer ---
+    # Validate indices before installing anything: a checkpoint written for a
+    # different architecture would otherwise have state entries silently
+    # skipped (or mapped onto the wrong parameters).
+    n_groups = len(optimizer.param_groups)
+    for k in tensors:
+        if not k.startswith("optimizer."):
+            continue
+        parts = k.split(".", 3)
+        if len(parts) < 3:
+            continue
+        try:
+            i, j = int(parts[1]), int(parts[2])
+        except ValueError:
+            continue
+        if i >= n_groups or j >= len(optimizer.param_groups[i]["params"]):
+            raise ValueError(
+                f"checkpoint {checkpoint_dir} contains optimizer state index ({i}, {j}) "
+                f"but the target optimizer has {n_groups} group(s) with "
+                f"{[len(g['params']) for g in optimizer.param_groups]} parameter(s) per group; "
+                "the checkpoint does not match this model's architecture"
+            )
     for i, group in enumerate(optimizer.param_groups):
         for j, p in enumerate(group["params"]):
             st_keys = [k for k in tensors if k.startswith(f"optimizer.{i}.{j}.")]
@@ -189,6 +242,19 @@ def resume_training_checkpoint(optimizer, scheduler, checkpoint_dir: Union[str, 
                 seen.add(name)
         if sched_state:
             scheduler.load_state_dict(sched_state)
+
+    # --- grad scaler (fp16 path; absent in pre-scaler checkpoints) ---
+    if grad_scaler is not None:
+        scale_key = "trainer.grad_scaler.scale"
+        if scale_key in tensors:
+            sd = {
+                "scale": float(tensors[scale_key].item()),
+                "growth_factor": float(tensors["trainer.grad_scaler.growth_factor"].item()),
+                "backoff_factor": float(tensors["trainer.grad_scaler.backoff_factor"].item()),
+                "growth_interval": int(tensors["trainer.grad_scaler.growth_interval"].item()),
+                "_growth_tracker": int(tensors["trainer.grad_scaler._growth_tracker"].item()),
+            }
+            grad_scaler.load_state_dict(sd)
 
     # --- RNG ---
     if "trainer.rng_cpu" in tensors:

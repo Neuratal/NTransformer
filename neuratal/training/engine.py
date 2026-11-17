@@ -8,6 +8,13 @@ Design contract:
 - Gradient clipping applied to the *accumulated* gradient before stepping.
 - BF16 mixed precision via ``torch.autocast``; fp32 master weights handled by
   ``torch.optim.AdamW`` (it keeps fp32 state for bf16 params automatically).
+- FP16 mixed precision uses ``torch.autocast`` + ``torch.amp.GradScaler``
+  (loss scaling, unscale-before-clip, skipped step on non-finite grads); the
+  scaler state is checkpointed and restored on resume.
+- DDP: ``find_unused_parameters=True`` is set when the model is an MoE
+  (a micro-batch may legitimately route zero tokens to some expert, and a
+  parameter that never enters the autograd graph would otherwise wedge the
+  reducer). Dense models keep the default fast path.
 - Loss normalization: average per-token loss over supervised tokens.
 - MoE router auxiliary/z losses are added to the main LM loss exactly once per
   micro-batch (they are already coefficient-weighted, scalar mean terms).
@@ -85,6 +92,18 @@ def _device_of(model: torch.nn.Module) -> torch.device:
     return next(core.parameters()).device
 
 
+def _head_out_proj_weight(core: torch.nn.Module):
+    """Output-projection weight for the tied head, or None for full-width embeddings.
+
+    ``OutputProjection.out_proj`` is None when embedding_size == hidden_size;
+    the chunked cross-entropy handles that case natively. (Previously the
+    engine unconditionally dereferenced ``.out_proj.weight`` and crashed for
+    full-width head configs.)
+    """
+    out_proj = core.output_projection.out_proj
+    return out_proj.weight if out_proj is not None else None
+
+
 def _moe_log_fields(stats_sum, micro_count: int) -> dict:
     """Convert accumulated MoE metric tensors to JSON-friendly floats/lists."""
     if stats_sum is None or micro_count == 0:
@@ -135,7 +154,14 @@ def train(
     if world_size > 1:
         local_rank = rank % max(1, torch.cuda.device_count())
         device_ids = [local_rank] if cfg.device == "cuda" else None
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=device_ids)
+        core_cfg = (model.module if hasattr(model, "module") else model).config
+        model = torch.nn.parallel.DistributedDataParallel(
+            model, device_ids=device_ids,
+            # An MoE micro-batch can route zero tokens to some expert; a
+            # parameter that never enters the autograd graph would otherwise
+            # wedge the DDP reducer (towel in also for mixed dense/MoE stacks).
+            find_unused_parameters=bool(core_cfg.is_moe),
+        )
 
     optimizer = build_optimizer(model, name="adamw", learning_rate=cfg.learning_rate,
                                 weight_decay=cfg.weight_decay)
@@ -144,6 +170,8 @@ def train(
                                      total_steps=total_steps, min_lr_ratio=cfg.min_lr_ratio)
     use_amp = cfg.precision in ("bfloat16", "float16") and _device_of(model).type == "cuda"
     amp_dtype = torch.bfloat16 if cfg.precision == "bfloat16" else torch.float16
+    use_scaler = cfg.precision == "float16" and _device_of(model).type == "cuda"
+    scaler = torch.amp.GradScaler("cuda", enabled=use_scaler)
 
     out_dir = Path(cfg.out_dir)
     if is_main:
@@ -156,6 +184,8 @@ def train(
     if resume_from is not None:
         meta = resume_training_checkpoint(
             optimizer, scheduler, resume_from, map_location="cpu", model=model,
+            expected_tokenizer_fingerprint=cfg.tokenizer_fingerprint,
+            grad_scaler=scaler if use_scaler else None,
         )
         global_step = int(meta["global_step"])
         tokens_seen = int(meta["tokens_seen"])
@@ -206,7 +236,7 @@ def train(
                 hidden, moe_stats = forward_hidden(ids)
                 total_loss, n_tok = chunked_linear_cross_entropy(
                     hidden, labels,
-                    core.output_projection.out_proj.weight,
+                    _head_out_proj_weight(core),
                     core.embed_tokens.embedding_weight,
                 )
                 lm_loss = total_loss / n_tok.clamp_min(1)
@@ -221,7 +251,10 @@ def train(
                     else lm_loss.new_zeros(())
                 )
                 loss = lm_loss + aux_loss + z_loss
-            (loss / cfg.gradient_accumulation_steps).backward()
+            if use_scaler:
+                scaler.scale(loss / cfg.gradient_accumulation_steps).backward()
+            else:
+                (loss / cfg.gradient_accumulation_steps).backward()
             tokens_seen += ids.numel()
             micro_done += 1
             main_sum = main_sum + lm_loss.detach()
@@ -247,8 +280,14 @@ def train(
                         stats_sum["z"] += moe_stats.z_loss.detach()
                     stats_sum["num_assignments"] += int(moe_stats.num_assignments)
 
-        grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
-        optimizer.step()
+        if use_scaler:
+            scaler.unscale_(optimizer)
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
+            scaler.step(optimizer)   # no-op when non-finite grads were found
+            scaler.update()
+        else:
+            grad_norm = torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
+            optimizer.step()
         scheduler.step()
         global_step += 1
 
@@ -283,7 +322,8 @@ def train(
             save_training_checkpoint(model, optimizer, scheduler, out_dir / f"ckpt-{step}",
                                      global_step=step, tokens_seen=tokens_seen,
                                      tokenizer_fingerprint=cfg.tokenizer_fingerprint,
-                                     precision=cfg.precision)
+                                     precision=cfg.precision,
+                                     grad_scaler=scaler if use_scaler else None)
 
         if is_main and step % cfg.eval_every_steps == 0 and val_data is not None:
             model.eval()
@@ -300,7 +340,7 @@ def train(
                         hidden, _ = forward_hidden(ids)
                         total_loss, n_tok = chunked_linear_cross_entropy(
                             hidden, labels,
-                            core.output_projection.out_proj.weight,
+                            _head_out_proj_weight(core),
                             core.embed_tokens.embedding_weight,
                         )
                         loss = total_loss / n_tok.clamp_min(1)
