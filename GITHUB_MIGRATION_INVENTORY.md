@@ -10,9 +10,9 @@ Machine: RTX 4060 Laptop (8 GB), Python 3.14.4, torch 2.15.0+cu132 · **NTokeniz
 | Field | Value |
 |---|---|
 | Location | `/home/justerdem14/Masaüstü/Team N/NTransformer` |
-| Active branch | `feature/v1.3-enterprise-2026-11` (HEAD = `d17391d`) |
-| `master` | tip `14f6fe0` ("snapshot v1.0.0-rc1 frozen"); 36 commits; **behind** feature branches; NOT modified |
-| Remotes | **none** (local-only repository; no `origin`) |
+| Active branch | `feature/v1.3-enterprise-2026-11` (HEAD = `b401a33`) |
+| `master` | tip `fb6ccd7` (v0.6.1-candidate; 36 commits; behind feature branches; NOT modified; at GitHub PRIVATE `Neuratal/NTransformer` |
+| Remotes | **`origin` → https://github.com/Neuratal/NTransformer** (private; added for migration) |
 | Tags | **none** |
 | Commits (HEAD) | 68; reachable from all refs: 72 |
 | Tracked files | **1,629** (0 binary > 35 KiB; largest blob 35,532 bytes) |
@@ -24,7 +24,7 @@ Machine: RTX 4060 Laptop (8 GB), Python 3.14.4, torch 2.15.0+cu132 · **NTokeniz
 
 | Branch | Commits | Ahead of master | Tip |
 |---|---:|---:|---|
-| `master` | 36 | 0 | `14f6fe0` (frozen v1.0.0-rc1) |
+| `master` | 36 | 0 | `fb6ccd7` (v0.6.1-candidate; snapshot ancestor) |
 | `cand/v0.6-mla` | 31 | +1 | latent-KV experiment (rejected/not promoted) |
 | `cand/v0.6-wy-chunkwise` | 36 | +1 | WY-chunkwise GDN (rejected/not promoted) |
 | `cand/v0.7-sliding-window` | 34 | +2 | sliding-window attention (rejected/not promoted) |
