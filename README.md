@@ -7,8 +7,8 @@ no datasets are bundled and no model quality claims are made. Every claim in
 this file is either measured on the development machine or explicitly labeled
 as an estimate.
 
-> **Status: v1.1.0rc1 (engineering release candidate).** The framework installs,
-> tests green (413 passed, 3 skipped, 1 warning), and small
+> **Status: v1.2.0-candidate (engineering audit candidate).** The framework installs,
+> tests green (418 passed, 3 skipped, 1 warning), and small
 > dense/MoE training runs end-to-end on the 8 GB development GPU with
 > synthetic data. **No real corpus has been used; no weights of a trained
 > model exist. This is not a production-ready serving system and not a
@@ -272,7 +272,7 @@ Benchmark suites: `benchmark_environment`, `benchmark_tokenizer`,
 ## Testing
 
 ```bash
-python -m pytest tests/ -q          # full suite: 413 passed, 3 skipped, 1 warning
+python -m pytest tests/ -q          # full suite: 418 passed, 3 skipped, 1 warning
 python -m pytest tests/ -k cuda     # CUDA-only subset
 ```
 
@@ -320,13 +320,18 @@ expert/tensor/pipeline parallelism, custom fused kernels.
 
 ## Documentation map
 
+- `docs/ultimate_audit/FINAL_AUDIT.md` — v1.2.0-candidate: complete file-by-file audit, bug registry, performance research, verdict
+- `docs/ultimate_audit/file_inventory.md` — every audited file, symbols, risks, status
+- `docs/ultimate_audit/bug_registry.md` — confirmed bugs, evidence, fixes, open items
+- `docs/ultimate_audit/rejected_experiments.md` — experiments rejected with data
+- `docs/release_notes_v1.2.0.md` — release notes for the candidate
 - `docs/architecture_audit.md` — architecture rationale and correctness rules
 - `docs/moe_integration.md` — MoE design, measurements, scale readiness
 - `docs/final_report.md` — Phase 5 engineering report
 - `docs/ntokenizer_compatibility.md` — tokenizer boundary + fingerprint
 - `docs/benchmark_methodology.md`, `docs/benchmark_results.md` — benchmarking
 - `docs/optimization_log.md` — what was tried and what stuck
-- `docs/release_readiness.md` — this pass: final audit, measurements, verdict
+- `docs/release_readiness.md` — v1.1.0rc1 report (superseded by the audit report)
 - `docs/training_plan.md` — how real training would be run (not run here)
 
 ## License

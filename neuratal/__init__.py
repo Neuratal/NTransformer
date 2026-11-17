@@ -44,7 +44,7 @@ def __getattr__(name: str):
 def __dir__() -> list[str]:
     return sorted(set(globals()) | _PRESET_EXPORTS)
 
-__version__ = "1.1.0rc1"
+__version__ = "1.2.0rc1"
 
 __all__ = [
     "NeuratalConfig",

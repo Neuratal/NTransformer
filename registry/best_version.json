@@ -179,6 +179,31 @@
         "MoE dispatch gains are constant-factor; GEMMs dominate at larger sizes",
         "fp16 path is CUDA-only"
       ]
+    },
+    {
+      "name": "v1.2.0-candidate",
+      "branch": "feature/v1.2-audit-2026-11",
+      "note": "Ultimate engineering audit candidate: fixes two silent LR-schedule defects (fresh step 0 ran at full base LR; resume pushed construction LR instead of the restored schedule), sharded-checkpoint byte-count verification, atom-save dedup, fused normalize-without-weight RMSNorm under autocast (op-level 1.65x; to-end effect within noise). No architecture change. 418 passed.",
+      "test_summary": "418 passed, 3 skipped, 1 warning",
+      "promoted": false,
+      "evidence": {
+        "scheduler_resume_lr_exact": "test_scheduler_resume_applies_resumed_lr (byte-exact LR trajectory)",
+        "fresh_step0_lr": "test_scheduler_fresh_applies_warmup_lr",
+        "base_lrs_mismatch_rejected": "test_scheduler_base_lrs_length_mismatch_rejected",
+        "cuda_rng_byte_exact": "test_cuda_rng_restore_exact",
+        "sharded_total_size_integrity": "test_sharded_total_size_integrity_check",
+        "rmsnorm_autocast": "F.rms_norm normalize-without-weight under autocast: 0.0627 -> 0.0379 ms/op, diff 0.0 common; end-to-end within noise",
+        "tokenizer_fingerprint": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9 (verified pre/post audit)",
+        "chunked_ce_gradient_parity_rel_l2": 1.03e-06,
+        "package_import_time_s": "~1.3 (v1.1, holds)"
+      },
+      "limitations": [
+        "untrained; synthetic data only",
+        "multi-GPU DDP MoE untested (single-process gloo smoke only)",
+        "crash-consistency not fault-injected",
+        "end-to-end performance deltas within GPU clock noise (\u00b110-20%)",
+        "fp16 path CUDA-only"
+      ]
     }
   ]
 }

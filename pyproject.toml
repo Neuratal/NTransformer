@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "neuratal-transformer"
-version = "1.1.0rc1"
+version = "1.2.0rc1"
 description = "Neuratal Transformer: a decoder-only, autoregressive Transformer core for the Neuratal language model project (NTokenizer-compatible, vocab 262,144)."
 readme = "README.md"
 requires-python = ">=3.10"
