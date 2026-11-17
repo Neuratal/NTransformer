@@ -212,3 +212,60 @@ def test_resume_then_continue_updates_step_counter(tmp_path):
     steps = [h["step"] for h in history if "main_loss" in h]
     assert steps == [4, 5]
     assert all(math.isfinite(h["main_loss"]) for h in history if "main_loss" in h)
+
+
+def test_scheduler_fresh_applies_warmup_lr():
+    model = full_width_model()
+    opt = build_optimizer(model, learning_rate=1e-3, weight_decay=0.0)
+    sched = WarmupCosineSchedule(opt, warmup_steps=10, total_steps=100)
+    # step-0 LR is already the warmup LR, not the full base LR
+    assert opt.param_groups[0]["lr"] == pytest.approx(1e-3 / 10)
+    assert sched.current_step == 0
+
+
+def test_scheduler_resume_applies_resumed_lr():
+    model = full_width_model()
+    opt = build_optimizer(model, learning_rate=1e-3, weight_decay=0.0)
+    sched = WarmupCosineSchedule(opt, warmup_steps=10, total_steps=100)
+    for _ in range(4):
+        opt.step()
+        sched.step()
+    lr_after_4 = opt.param_groups[0]["lr"]
+    assert lr_after_4 > 0
+
+    # restore into a fresh optimizer/scheduler — LR must not snap back to base
+    model2 = full_width_model()
+    opt2 = build_optimizer(model2, learning_rate=1e-3, weight_decay=0.0)
+    sched2 = WarmupCosineSchedule(opt2, warmup_steps=10, total_steps=100)
+    base_lr = opt2.param_groups[0]["lr"]
+    assert base_lr == pytest.approx(1e-3 / 10)  # warmup LR after fresh construction
+    sched2.load_state_dict(sched.state_dict())
+    assert sched2.current_step == 4
+    # resume restores the exact LR the groups held at save time (lr_at(3))
+    assert opt2.param_groups[0]["lr"] == pytest.approx(lr_after_4)
+    assert opt2.param_groups[0]["lr"] == pytest.approx(sched.lr_at(3)[0])
+
+
+def test_scheduler_base_lrs_length_mismatch_rejected():
+    model = full_width_model()
+    opt = build_optimizer(model, learning_rate=1e-3, weight_decay=0.0)
+    sched = WarmupCosineSchedule(opt, warmup_steps=1, total_steps=10)
+    state = sched.state_dict()
+    state["base_lrs"] = [1e-3, 1e-3, 1e-3]  # optimizer has 2 groups (decay/no-decay)
+    with pytest.raises(ValueError, match="base_lrs"):
+        sched.load_state_dict(state)
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+def test_cuda_rng_restore_exact(tmp_path):
+    model = full_width_model()
+    opt = build_optimizer(model, learning_rate=1e-3, weight_decay=0.0)
+    sched = WarmupCosineSchedule(opt, warmup_steps=1, total_steps=8)
+    torch.cuda.manual_seed_all(123)
+    a = torch.cuda.get_rng_state()
+    save_training_checkpoint(model, opt, sched, tmp_path / "ckpt", global_step=0,
+                             tokens_seen=0, tokenizer_fingerprint=None)
+    # corrupt the RNG, then resume restores it exactly
+    torch.cuda.manual_seed_all(999)
+    resume_training_checkpoint(opt, sched, tmp_path / "ckpt")
+    assert torch.equal(torch.cuda.get_rng_state().cpu(), a.cpu())

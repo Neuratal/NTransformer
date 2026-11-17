@@ -52,6 +52,10 @@ class WarmupCosineSchedule:
         self.min_lr_ratio = min_lr_ratio
         self.base_lrs = [g["lr"] for g in optimizer.param_groups]
         self._step = 0
+        # Apply the schedule from step 0 so the first optimizer step already
+        # runs at the warmup LR (lr_at(0)); otherwise the first step would
+        # run at the full base LR even mid-warmup.
+        self._apply(self.lr_at(0))
 
     def state_dict(self) -> dict[str, Any]:
         return {"step": self._step, "warmup_steps": self.warmup_steps,
@@ -63,7 +67,22 @@ class WarmupCosineSchedule:
         self.warmup_steps = int(state["warmup_steps"])
         self.total_steps = int(state["total_steps"])
         self.min_lr_ratio = float(state["min_lr_ratio"])
-        self.base_lrs = list(state["base_lrs"])
+        restored_lrs = list(state["base_lrs"])
+        if len(restored_lrs) != len(self.base_lrs):
+            raise ValueError(
+                f"scheduler state base_lrs has length {len(restored_lrs)} but this optimizer "
+                f"has {len(self.base_lrs)} param group(s); refusing to restore a mismatched schedule"
+            )
+        self.base_lrs = restored_lrs
+        # Reapply the LR the param groups held at save time: the groups always
+        # hold lr_at(_step - 1) for _step >= 1 (lr_at(0) when saved at step 0).
+        # This keeps a resumed run's first optimizer step at exactly the LR
+        # the interrupted run would have used.
+        self._apply(self.lr_at(max(self._step - 1, 0)))
+
+    def _apply(self, lrs: list[float]) -> None:
+        for group, lr in zip(self.optimizer.param_groups, lrs):
+            group["lr"] = lr
 
     def lr_at(self, step: int) -> list[float]:
         if step < self.warmup_steps:
@@ -77,8 +96,7 @@ class WarmupCosineSchedule:
 
     def step(self) -> None:
         lrs = self.lr_at(self._step)
-        for group, lr in zip(self.optimizer.param_groups, lrs):
-            group["lr"] = lr
+        self._apply(lrs)
         self._step += 1
 
     @property
