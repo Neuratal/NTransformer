@@ -1,0 +1,272 @@
+{
+  "artifact": "/home/justerdem14/Masa\u00fcst\u00fc/Team N/NTokenizer/output/v0.3/ntokenizer-0.3-256k.ntok",
+  "artifact_load_seconds": 0.48804344900054275,
+  "artifact_sha256": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9",
+  "batch": {
+    "encode_bytes_per_second": 10804444.57143739,
+    "encode_mib_per_second": 10.303921290814772,
+    "n_texts": 32,
+    "tokens_per_second": 1732788.2803248644,
+    "total_bytes": 27136,
+    "wall_seconds": 0.0025115589996858034
+  },
+  "corpora": {
+    "code_python": {
+      "bytes": 1602,
+      "bytes_per_token": 3.4675324675324677,
+      "decode": {
+        "max_s": 1.2430999049684033e-05,
+        "mean_s": 8.123046815550575e-06,
+        "median_s": 8.05400122771971e-06,
+        "min_s": 7.755999831715599e-06,
+        "p95_s": 8.401999366469681e-06,
+        "reps": 150
+      },
+      "decode_bytes": {
+        "max_s": 1.0293999366695061e-05,
+        "mean_s": 8.180720227149626e-06,
+        "median_s": 8.21100184111856e-06,
+        "min_s": 7.709000783506781e-06,
+        "p95_s": 8.400998922297731e-06,
+        "reps": 150
+      },
+      "decode_bytes_per_second": 198907344.89663923,
+      "decode_mib_per_second": 189.69282617248462,
+      "decode_tokens_per_second": 57362792.34846899,
+      "encode": {
+        "max_s": 0.00013389699961408041,
+        "mean_s": 0.0001244427800217333,
+        "median_s": 0.0001248714997927891,
+        "min_s": 0.00011893500050064176,
+        "p95_s": 0.0001296699992963113,
+        "reps": 150
+      },
+      "encode_bytes_per_second": 12829188.426969705,
+      "encode_mib_per_second": 12.234867503137307,
+      "encode_tokens_per_second": 3699803.404032462,
+      "token_ids": 462
+    },
+    "medium_en": {
+      "bytes": 848,
+      "bytes_per_token": 6.235294117647059,
+      "decode": {
+        "max_s": 8.151997462846339e-06,
+        "mean_s": 4.363746726691412e-06,
+        "median_s": 4.289999196771532e-06,
+        "min_s": 4.092002200195566e-06,
+        "p95_s": 4.608999006450176e-06,
+        "reps": 150
+      },
+      "decode_bytes": {
+        "max_s": 6.919999577803537e-06,
+        "mean_s": 4.230779838205005e-06,
+        "median_s": 4.187999365967698e-06,
+        "min_s": 4.0240011003334075e-06,
+        "p95_s": 4.426998202688992e-06,
+        "reps": 150
+      },
+      "decode_bytes_per_second": 197669034.67911324,
+      "decode_mib_per_second": 188.51188152228664,
+      "decode_tokens_per_second": 31701637.637216277,
+      "encode": {
+        "max_s": 8.254199929069728e-05,
+        "mean_s": 7.691424679554377e-05,
+        "median_s": 7.702799848630093e-05,
+        "min_s": 7.327599814743735e-05,
+        "p95_s": 8.025799979805015e-05,
+        "reps": 150
+      },
+      "encode_bytes_per_second": 11008983.96251089,
+      "encode_mib_per_second": 10.498985254774942,
+      "encode_tokens_per_second": 1765591.7675725012,
+      "token_ids": 136
+    },
+    "medium_tr": {
+      "bytes": 880,
+      "bytes_per_token": 6.666666666666667,
+      "decode": {
+        "max_s": 1.1169002391397953e-05,
+        "mean_s": 4.790266708975347e-06,
+        "median_s": 4.651499693864025e-06,
+        "min_s": 4.5150009100325406e-06,
+        "p95_s": 5.341000360203907e-06,
+        "reps": 150
+      },
+      "decode_bytes": {
+        "max_s": 6.565998774021864e-06,
+        "mean_s": 4.201539971594078e-06,
+        "median_s": 4.156001523369923e-06,
+        "min_s": 3.9950027712620795e-06,
+        "p95_s": 4.388002707855776e-06,
+        "reps": 150
+      },
+      "decode_bytes_per_second": 189186296.44560492,
+      "decode_mib_per_second": 180.42211193619244,
+      "decode_tokens_per_second": 28377944.466840737,
+      "encode": {
+        "max_s": 9.877100092126057e-05,
+        "mean_s": 7.810007996643738e-05,
+        "median_s": 7.815049866621848e-05,
+        "min_s": 7.377800284302793e-05,
+        "p95_s": 8.319400149048306e-05,
+        "reps": 150
+      },
+      "encode_bytes_per_second": 11260324.822218835,
+      "encode_mib_per_second": 10.738682577341876,
+      "encode_tokens_per_second": 1689048.7233328253,
+      "token_ids": 132
+    },
+    "multilingual": {
+      "bytes": 5700,
+      "bytes_per_token": 4.634146341463414,
+      "decode": {
+        "max_s": 2.5644996640039608e-05,
+        "mean_s": 2.0804025189136156e-05,
+        "median_s": 2.0694500562967733e-05,
+        "min_s": 2.0203002350172028e-05,
+        "p95_s": 2.1292002202244475e-05,
+        "reps": 40
+      },
+      "decode_bytes": {
+        "max_s": 1.9099999917671084e-05,
+        "mean_s": 1.6884125125216086e-05,
+        "median_s": 1.673299993854016e-05,
+        "min_s": 1.6222998965531588e-05,
+        "p95_s": 1.7948997992789373e-05,
+        "reps": 40
+      },
+      "decode_bytes_per_second": 275435494.6936966,
+      "decode_mib_per_second": 262.6757571160284,
+      "decode_tokens_per_second": 59436080.43390295,
+      "encode": {
+        "max_s": 0.0004253049992257729,
+        "mean_s": 0.0004049406999911298,
+        "median_s": 0.00040258749868371524,
+        "min_s": 0.00038997599767753854,
+        "p95_s": 0.00042254200161551125,
+        "reps": 40
+      },
+      "encode_bytes_per_second": 14158412.813702619,
+      "encode_mib_per_second": 13.502514661505336,
+      "encode_tokens_per_second": 3055236.4492726703,
+      "token_ids": 1230
+    },
+    "numbers": {
+      "bytes": 8890,
+      "bytes_per_token": 3.081455805892548,
+      "decode": {
+        "max_s": 0.00017348399705952033,
+        "mean_s": 4.588227466229e-05,
+        "median_s": 4.242199793225154e-05,
+        "min_s": 3.990500044892542e-05,
+        "p95_s": 4.958199860993773e-05,
+        "reps": 40
+      },
+      "decode_bytes": {
+        "max_s": 4.611799886333756e-05,
+        "mean_s": 4.099809993931558e-05,
+        "median_s": 4.0772500142338686e-05,
+        "min_s": 3.921100142179057e-05,
+        "p95_s": 4.3729000026360154e-05,
+        "reps": 40
+      },
+      "decode_bytes_per_second": 209561087.01427594,
+      "decode_mib_per_second": 199.85302640369028,
+      "decode_tokens_per_second": 68007169.40789495,
+      "encode": {
+        "max_s": 0.0006503670010715723,
+        "mean_s": 0.0005782118252682267,
+        "median_s": 0.0005785975008620881,
+        "min_s": 0.0005509250004251953,
+        "p95_s": 0.000602678999712225,
+        "reps": 40
+      },
+      "encode_bytes_per_second": 15364739.71414367,
+      "encode_mib_per_second": 14.652957643645925,
+      "encode_tokens_per_second": 4986195.059089368,
+      "token_ids": 2885
+    },
+    "short_en": {
+      "bytes": 13,
+      "bytes_per_token": 4.333333333333333,
+      "decode": {
+        "max_s": 8.402999810641631e-06,
+        "mean_s": 2.5092400877232042e-06,
+        "median_s": 2.4569999368395656e-06,
+        "min_s": 2.306001988472417e-06,
+        "p95_s": 2.6790003175847232e-06,
+        "reps": 300
+      },
+      "decode_bytes": {
+        "max_s": 5.3530020522885025e-06,
+        "mean_s": 2.457643386151176e-06,
+        "median_s": 2.4354994820896536e-06,
+        "min_s": 2.3230022634379566e-06,
+        "p95_s": 2.5379995349794626e-06,
+        "reps": 300
+      },
+      "decode_bytes_per_second": 5291005.427017583,
+      "decode_mib_per_second": 5.045895983712752,
+      "decode_tokens_per_second": 1221001.252388673,
+      "encode": {
+        "max_s": 7.696002285229042e-06,
+        "mean_s": 2.997323438952056e-06,
+        "median_s": 2.914001015597023e-06,
+        "min_s": 2.7890018827747554e-06,
+        "p95_s": 3.2759999157860875e-06,
+        "reps": 300
+      },
+      "encode_bytes_per_second": 4461220.133561467,
+      "encode_mib_per_second": 4.254551061212031,
+      "encode_tokens_per_second": 1029512.3385141846,
+      "token_ids": 3
+    },
+    "short_tr": {
+      "bytes": 16,
+      "bytes_per_token": 3.2,
+      "decode": {
+        "max_s": 5.579000571742654e-06,
+        "mean_s": 2.576316631651328e-06,
+        "median_s": 2.5535009626764804e-06,
+        "min_s": 2.450000465614721e-06,
+        "p95_s": 2.6710004021879286e-06,
+        "reps": 300
+      },
+      "decode_bytes": {
+        "max_s": 4.240002454025671e-06,
+        "mean_s": 2.4523665221446816e-06,
+        "median_s": 2.4335004127351567e-06,
+        "min_s": 2.278000465594232e-06,
+        "p95_s": 2.654000127222389e-06,
+        "reps": 300
+      },
+      "decode_bytes_per_second": 6265907.173666942,
+      "decode_mib_per_second": 5.975634740511839,
+      "decode_tokens_per_second": 1958095.9917709192,
+      "encode": {
+        "max_s": 6.443999154726043e-06,
+        "mean_s": 3.1783333664255526e-06,
+        "median_s": 3.167999238939956e-06,
+        "min_s": 2.9289985832292587e-06,
+        "p95_s": 3.459997969912365e-06,
+        "reps": 300
+      },
+      "encode_bytes_per_second": 5050506.263806351,
+      "encode_mib_per_second": 4.816538108641006,
+      "encode_tokens_per_second": 1578283.2074394848,
+      "token_ids": 5
+    }
+  },
+  "run_id": "20261116T160012Z",
+  "saved_at_utc": "2026-11-16T16:00:12.891907+00:00",
+  "special_tokens": {
+    "<|assistant|>": 262143,
+    "<|bos|>": 262137,
+    "<|eos|>": 262138,
+    "<|pad|>": 262139,
+    "<|system|>": 262141,
+    "<|unk|>": 262140,
+    "<|user|>": 262142
+  },
+  "vocab_size": 262144
+}
