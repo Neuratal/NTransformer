@@ -225,6 +225,29 @@
         "NTokenizer integration skips are environment-dependent (moved checkouts skip 40+)",
         "NTokenizer repo has no git history (reported; owner action required)"
       ]
+    },
+    {
+      "name": "v1.4.0-candidate",
+      "branch": "fix/v1.4-bug-remediation-2026-11",
+      "commit": "5d912b3b2157c0a1429f46a641b949dcd828ee16",
+      "note": "Bug-remediation release against the independent v1.3 audit: DDP + factorized-tied-head MoE training fixed (2-process gloo verified, bitwise parity vs single-process), fp16 GradScaler skip no longer advances LR schedule, bf16/fp32 non-finite-grad guard added, sharded checkpoint loader hardened (path containment + fail-closed SHA-256/total_size), LR scheduler one-step retard removed, scheduler validation completed (warmup < total, positive base_lrs), estimator fp32 grad width fixed, all POSSIBLE findings fixed, 38 new regression tests (suite 460 passed). Not promoted.",
+      "promoted": false,
+      "test_summary": "460 passed, 3 skipped, 3 warnings in ~48s (2026-11-17)",
+      "evidence": {
+        "ddp_2proc_gloo": "dense/MoE x factored/full-width heads, grad accumulation x2, bitwise parity vs single-process reference (params and grads), DDP checkpoint save/resume roundtrip",
+        "resume_bit_exact": "weights bitwise at K=0,1,2,5,16,19,20,25 (CPU) and K=1,4,8 (CUDA); v1.3->v1.4 cross-version resume restores weights bit-exactly (LR shifts one schedule position \u2014 documented)",
+        "sharded_sha256": "same-size stale shard rejected; absent shard_hashes/total_size now fails closed; path traversal rejected (BUG-03/04)",
+        "chunked_ce_gradient_parity_rel_l2": 2.5e-07,
+        "perf_vs_v1.3": "no regression beyond measurement noise (see versions/v1.4.0-candidate/reports/V1_4_PERFORMANCE_COMPARISON.md)",
+        "tokenizer_fingerprint": "1f0d4ad7c7fb609001b2af4d9741ec5b8a5d7686fa3b92eb8eefd057fea936d9 (carried from v1.3; not re-verified \u2014 integration suite skipped by policy)"
+      },
+      "limitations": [
+        "untrained; synthetic data only",
+        "no multi-GPU/NCCL validation (single GPU; 2-proc CPU gloo only)",
+        "NTokenizer integration tests skipped (policy; not re-verified)",
+        "sharded index unauthenticated by design (STRONG-03)",
+        "no crash-consistency fault injection"
+      ]
     }
   ]
 }

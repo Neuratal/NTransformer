@@ -1,0 +1,281 @@
+"""Serialization: roundtrip bitwise equality, tying preservation, failure modes."""
+
+from __future__ import annotations
+
+import json
+
+import pytest
+import torch
+from safetensors.torch import load_file, save_file
+
+from neuratal import NeuratalConfig, NeuratalModel, load_pretrained, save_pretrained
+
+V = 262_144
+
+
+def make_model(**overrides) -> NeuratalModel:
+    torch.manual_seed(0)
+    return NeuratalModel(NeuratalConfig(**overrides))
+
+
+class TestRoundTrip:
+    def test_state_dict_bitwise_equal(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        loaded = load_pretrained(tmp_path)
+        original = model.state_dict()
+        restored = loaded.state_dict()
+        assert set(original) == set(restored)
+        for key, tensor in original.items():
+            assert torch.equal(tensor, restored[key]), key
+
+    def test_logits_identical_after_roundtrip(self, tmp_path):
+        model = make_model().eval()
+        ids = torch.randint(0, V, (1, 8))
+        with torch.no_grad():
+            ref = model(ids).logits
+            save_pretrained(model, tmp_path)
+            loaded = load_pretrained(tmp_path).eval()
+            out = loaded(ids).logits
+        assert torch.equal(ref, out)
+
+    def test_weight_tying_effective_after_load(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        loaded = load_pretrained(tmp_path)
+        # exactly one embedding matrix in the loaded model
+        keys = list(loaded.state_dict().keys())
+        assert keys.count("embed_tokens.token_embedding.weight") == 1
+        assert not any("output_projection" in k and "token_embedding" in k for k in keys)
+        # parameter identity: the head still shares the embedding object at call time
+        assert loaded.embed_tokens.embedding_weight is loaded.embed_tokens.token_embedding.weight
+
+    def test_tied_matrix_serialized_exactly_once(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        with open(tmp_path / "model.safetensors", "rb") as handle:
+            header_len = int.from_bytes(handle.read(8), "little")
+            header = json.loads(handle.read(header_len))
+        embedding_keys = [k for k in header if "token_embedding" in k]
+        assert embedding_keys == ["embed_tokens.token_embedding.weight"]
+        assert "output_projection.out_proj.weight" in header
+
+    def test_checkpoint_config_is_resolved_and_self_describing(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        payload = json.loads((tmp_path / "config.json").read_text())
+        assert payload["format_version"] == 1
+        assert payload["architectures"] == ["NeuratalModel"]
+        cfg = payload["config"]
+        assert cfg["vocab_size"] == V
+        assert cfg["embedding_size"] == 32
+        assert cfg["cache_capacity"] == cfg["max_position_embeddings"] == 2048
+        assert cfg["tie_word_embeddings"] is True
+
+    def test_config_roundtrip_preserves_values(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        loaded = load_pretrained(tmp_path)
+        assert loaded.config.to_dict() == model.config.to_dict()
+
+
+class TestFailureModes:
+    def test_missing_weights_file(self, tmp_path):
+        (tmp_path / "config.json").write_text("{}")
+        with pytest.raises(ValueError, match="model.safetensors"):
+            load_pretrained(tmp_path)
+
+    def test_missing_config_file(self, tmp_path):
+        (tmp_path / "model.safetensors").write_bytes(b"")
+        with pytest.raises(ValueError, match="config.json"):
+            load_pretrained(tmp_path)
+
+    def test_non_directory_rejected(self, tmp_path):
+        with pytest.raises(ValueError, match="does not exist"):
+            load_pretrained(tmp_path / "nope")
+
+    def test_truncated_safetensors_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        path = tmp_path / "model.safetensors"
+        data = path.read_bytes()
+        path.write_bytes(data[: len(data) // 2])
+        with pytest.raises(ValueError, match="safetensors"):
+            load_pretrained(tmp_path)
+
+    def test_missing_key_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        sd = {k: v for k, v in load_file(str(tmp_path / "model.safetensors")).items()
+              if k != "layers.0.mlp.gate_up_proj.weight"}
+        save_file(sd, str(tmp_path / "model.safetensors"))
+        with pytest.raises(ValueError, match="missing keys"):
+            load_pretrained(tmp_path)
+
+    def test_unexpected_key_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        sd = load_file(str(tmp_path / "model.safetensors"))
+        sd["layers.0.mlp.gate_up_proj.bias"] = torch.zeros(1280)
+        save_file(sd, str(tmp_path / "model.safetensors"))
+        with pytest.raises(ValueError, match="unexpected keys"):
+            load_pretrained(tmp_path)
+
+    def test_dtype_mismatch_between_config_and_file_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        payload = json.loads((tmp_path / "config.json").read_text())
+        payload["config"]["dtype"] = "bfloat16"  # file stays fp32
+        (tmp_path / "config.json").write_text(json.dumps(payload))
+        with pytest.raises(ValueError, match="dtype mismatch"):
+            load_pretrained(tmp_path)
+
+    def test_shape_mismatch_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        sd = load_file(str(tmp_path / "model.safetensors"))
+        sd["layers.0.mlp.gate_up_proj.weight"] = torch.zeros(1281, 256)
+        save_file(sd, str(tmp_path / "model.safetensors"))
+        with pytest.raises(ValueError, match="shape mismatch"):
+            load_pretrained(tmp_path)
+
+    def test_unknown_config_key_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        payload = json.loads((tmp_path / "config.json").read_text())
+        payload["config"]["sneaky_flag"] = 1
+        (tmp_path / "config.json").write_text(json.dumps(payload))
+        with pytest.raises(ValueError, match="unknown config keys"):
+            load_pretrained(tmp_path)
+
+    def test_unsupported_format_version_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        payload = json.loads((tmp_path / "config.json").read_text())
+        payload["format_version"] = 99
+        (tmp_path / "config.json").write_text(json.dumps(payload))
+        with pytest.raises(ValueError, match="format_version"):
+            load_pretrained(tmp_path)
+
+    def test_wrong_architecture_rejected(self, tmp_path):
+        model = make_model()
+        save_pretrained(model, tmp_path)
+        payload = json.loads((tmp_path / "config.json").read_text())
+        payload["architectures"] = ["SomeOtherModel"]
+        (tmp_path / "config.json").write_text(json.dumps(payload))
+        with pytest.raises(ValueError, match="architecture"):
+            load_pretrained(tmp_path)
+
+    def test_invalid_config_json_rejected(self, tmp_path):
+        (tmp_path / "config.json").write_text("{not json")
+        (tmp_path / "model.safetensors").write_bytes(b"")
+        with pytest.raises(ValueError):
+            load_pretrained(tmp_path)
+
+
+    def test_bf16_model_roundtrip_records_actual_dtype(self, tmp_path):
+        model = make_model().to(torch.bfloat16)
+        with pytest.warns(UserWarning, match="dtype"):
+            save_pretrained(model, tmp_path)
+        payload = json.loads((tmp_path / "config.json").read_text())
+        assert payload["config"]["dtype"] == "bfloat16"
+        loaded = load_pretrained(tmp_path)
+        for key, tensor in model.state_dict().items():
+            restored = loaded.state_dict()[key]
+            assert torch.equal(tensor, restored), key
+
+
+class TestCudaRoundTrip:
+    def test_cuda_save_load_cpu(self, tmp_path):
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available")
+        model = make_model().to("cuda")
+        save_pretrained(model, tmp_path)
+        loaded = load_pretrained(tmp_path, map_location="cpu")
+        for key, tensor in model.state_dict().items():
+            assert torch.equal(tensor.cpu(), loaded.state_dict()[key]), key
+
+
+def test_sharded_total_size_integrity_check(tmp_path):
+    """A stale/replaced shard (keys intact, byte count wrong) is rejected."""
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    save_pretrained_sharded(model, tmp_path / "ckpt", max_shard_bytes=1024 * 40)
+    index_path = tmp_path / "ckpt" / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    index["metadata"]["total_size"] = int(index["metadata"]["total_size"]) + 12345
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="byte count mismatch"):
+        load_pretrained_sharded(tmp_path / "ckpt")
+
+
+def test_sharded_save_records_and_verifies_hashes(tmp_path):
+    import hashlib as _hashlib
+
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    index_path = ckpt / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    hashes = index["metadata"]["shard_hashes"]
+    assert hashes and len(hashes) == index["metadata"]["num_shards"]
+    for name, want in hashes.items():
+        got = _hashlib.sha256((ckpt / name).read_bytes()).hexdigest()
+        assert got == want
+    load_pretrained_sharded(ckpt)  # verifies by default
+
+
+def test_sharded_tampered_shard_rejected(tmp_path):
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    shard = sorted((ckpt).glob("model-*.safetensors"))[-1]
+    data = bytearray(shard.read_bytes())
+    data[-1] ^= 0x01  # last weight byte — safetensors cannot detect this; hashes can
+    shard.write_bytes(bytes(data))
+    with pytest.raises(ValueError, match="SHA-256"):
+        load_pretrained_sharded(ckpt)
+    # opt-out exists for verified-out-of-band contexts (e.g. enormous checkpoints)
+    load_pretrained_sharded(ckpt, verify_shard_hashes=False)  # loads (weights wrong — documented)
+
+
+def test_sharded_missing_hash_entry_rejected(tmp_path):
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    index_path = ckpt / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    first_key = next(iter(index["metadata"]["shard_hashes"]))
+    del index["metadata"]["shard_hashes"][first_key]
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="shard_hashes"):
+        load_pretrained_sharded(ckpt)
+
+
+def test_sharded_legacy_index_without_hashes_rejected_or_warns(tmp_path):
+    """Indexes without shard_hashes fail closed by default; opt-out loads with a warning.
+
+    v1.4 made verification fail-closed (BUG-04): default ``verify_shard_hashes=True``
+    refuses a hash-less index outright; ``verify_shard_hashes=False`` loads it with a
+    UserWarning instead of silently skipping verification.
+    """
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    index_path = ckpt / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    del index["metadata"]["shard_hashes"]
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="does not record shard_hashes"):
+        load_pretrained_sharded(ckpt)
+    with pytest.warns(UserWarning, match="shard_hashes"):
+        load_pretrained_sharded(ckpt, verify_shard_hashes=False)
