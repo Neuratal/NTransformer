@@ -194,3 +194,17 @@ class TestCudaRoundTrip:
         loaded = load_pretrained(tmp_path, map_location="cpu")
         for key, tensor in model.state_dict().items():
             assert torch.equal(tensor.cpu(), loaded.state_dict()[key]), key
+
+
+def test_sharded_total_size_integrity_check(tmp_path):
+    """A stale/replaced shard (keys intact, byte count wrong) is rejected."""
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    save_pretrained_sharded(model, tmp_path / "ckpt", max_shard_bytes=1024 * 40)
+    index_path = tmp_path / "ckpt" / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    index["metadata"]["total_size"] = int(index["metadata"]["total_size"]) + 12345
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="byte count mismatch"):
+        load_pretrained_sharded(tmp_path / "ckpt")

@@ -27,14 +27,11 @@ format to build distributed sharding on top of later.
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from pathlib import Path
 from typing import Optional, Union
 
 import torch
 from safetensors.torch import load_file as _st_load_file
-from safetensors.torch import save_file as _st_save_file
 
 from neuratal.config import NeuratalConfig
 from neuratal.model.model import NeuratalModel
@@ -42,8 +39,10 @@ from neuratal.serialization.checkpoint import (
     ARCHITECTURE_NAME,
     CONFIG_FILENAME,
     FORMAT_VERSION,
+    _atomic_save_safetensors,
     _atomic_write_text,
     _check_config_payload,
+    _check_no_shared_storage,
     _has_moe_keys,
     build_config_payload,
 )
@@ -92,8 +91,6 @@ def save_pretrained_sharded(
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     state_dict = model.state_dict()
-    # Same anti-aliasing guarantee as the single-file writer (tied embedding).
-    from neuratal.serialization.checkpoint import _check_no_shared_storage
     _check_no_shared_storage(state_dict)
 
     shards = plan_shards(state_dict, max_shard_bytes=max_shard_bytes)
@@ -176,6 +173,19 @@ def load_pretrained_sharded(
             f"shard contents do not match weight_map: missing={missing}, unexpected={unexpected}"
         )
 
+    # Integrity check: bytes on disk == bytes recorded at save time. A stale
+    # or partially truncated shard file that still parses as safetensors
+    # would otherwise load silently.
+    total_size = metadata.get("total_size")
+    if isinstance(total_size, int):
+        actual_size = sum(t.numel() * t.element_size() for t in state_dict.values())
+        if actual_size != total_size:
+            raise ValueError(
+                f"sharded checkpoint byte count mismatch: metadata records {total_size}, "
+                f"loaded tensors hold {actual_size} (a shard was replaced with stale or "
+                "different content)"
+            )
+
     config = NeuratalConfig.from_dict(payload["config"])
     model = NeuratalModel(config)
     model_state = model.state_dict()
@@ -202,17 +212,3 @@ def load_pretrained_sharded(
         )
     model.load_state_dict(state_dict, strict=True)
     return model
-
-
-def _atomic_save_safetensors(state_dict: dict[str, torch.Tensor], path: Path) -> None:
-    fd, tmp = tempfile.mkstemp(prefix=path.name + ".", suffix=".tmp", dir=path.parent)
-    os.close(fd)
-    try:
-        _st_save_file(state_dict, tmp)
-        os.replace(tmp, path)
-    except BaseException:
-        try:
-            os.unlink(tmp)
-        except OSError:
-            pass
-        raise
