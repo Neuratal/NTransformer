@@ -227,10 +227,11 @@ forward/backward/optimizer cycle with the 262k vocabulary. See
 | size | config validated | count measured | init tested | fwd tested | bwd tested | opt step | single-GPU | multi-GPU | distributed | production |
 |---|---|---|---|---|---|---|---|---|---|---|
 | dev preset (9.8M) | yes | yes | yes (CUDA) | yes | yes | yes | yes | no | no | no |
-| `50m`–`100m` | yes | yes | yes (meta/CPU) | yes (75m chain) | yes (75m) | yes (75m) | yes (75m) | no | no | no |
-| `500m`–`5.6b` | yes | yes | yes (meta) | smoke (tiny B/T) | smoke | no | no | no | no | no |
+| `50m`–`100m` | yes | yes | yes (CPU/meta) | yes (75m chain) | yes (75m) | yes (75m) | yes (75m) | no | no | no |
+| `500m`–`5.6b` | yes | yes | yes (meta) | no | no | no | no | no | no | no |
 | `13b`–`500b` | yes | yes | meta only | no | no | no | no | no | no | no |
 | MoE small/75M-class | yes | yes | yes | yes | yes | yes | yes | no | no | no |
+| MoE ≥1B | yes | yes | meta only | no | no | no | no | no | no | no |
 
 - "Meta tested" = module tree builds on the meta device and counts are exact.
   No forward pass has ever run for presets above ~100M (they do not fit).
@@ -253,9 +254,11 @@ normal and all numbers should be read as such):
 | Dense prefill fp32 T=128 | 2.092 ms | **1.854 ms** (-11%) | fused RMSNorm |
 | Dense prefill fp32 T=512 | 4.121 ms | **3.926 ms** (-5%) | T=1024: within noise |
 | Dense prefill bf16 T=512 | 3.032 ms | **2.725 ms** (-10%) | T=1024: 5.43→5.14 ms (-5%) |
-| MoE module fwd (B4, T=128) | 1.973 ms | **1.906 ms** (-3%) | gather/scatter-once |
-| MoE module fwd (B2, T=128) | 1.927 ms | **1.593 ms** (-17%) | same change |
-| `import neuratal` | 13.4 s | **1.3 s** | meta-init skip + lazy presets |
+| MoE module fwd (B2, T=128) | 1.927 ms | **1.611 ms** (-16%) | gather/scatter-once |
+| MoE module fwd (B2, T=512) | 3.447 ms | **3.353 ms** (-3%) | within noise band |
+| MoE module fwd (B4, T=128) | 1.973 ms | **1.946 ms** (-1%) | wash |
+| MoE module fwd (B4, T=512) | 5.473 ms | 5.29–5.86 ms (run-dependent) | within noise |
+| `import neuratal` | 13.4 s | **1.3–1.4 s** | meta-init skip + lazy presets |
 | Chunked CE fwd+bwd (1024 tok) | 88.0 ms | 88.0 ms | unchanged; allocates 1.29 GB vs 4.29 GB standard — the point of the path |
 
 Dense baseline and this pass use identical settings (`benchmark_model.py

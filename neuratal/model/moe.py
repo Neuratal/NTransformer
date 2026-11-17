@@ -199,7 +199,6 @@ class MoEFFN(nn.Module):
         counts_i64 = torch.bincount(flat_indices, minlength=self.num_experts)  # int64
         counts = counts_i64.to(torch.float32)
         order = torch.argsort(flat_indices, stable=True)
-        sorted_experts = flat_indices.index_select(0, order)
         sorted_tokens = torch.div(order, self.top_k, rounding_mode="floor")
         sorted_weights = flat_weights.index_select(0, order)
 
@@ -210,6 +209,7 @@ class MoEFFN(nn.Module):
 
         keep = None
         if self.capacity_factor is not None:
+            sorted_experts = flat_indices.index_select(0, order)
             capacity = max(
                 self.min_capacity,
                 int(math.ceil(self.capacity_factor * num_tokens * self.top_k / self.num_experts)),
