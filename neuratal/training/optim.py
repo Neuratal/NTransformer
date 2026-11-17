@@ -63,11 +63,23 @@ class WarmupCosineSchedule:
                 "base_lrs": self.base_lrs}
 
     def load_state_dict(self, state: dict[str, Any]) -> None:
-        self._step = int(state["step"])
-        self.warmup_steps = int(state["warmup_steps"])
-        self.total_steps = int(state["total_steps"])
-        self.min_lr_ratio = float(state["min_lr_ratio"])
-        restored_lrs = list(state["base_lrs"])
+        required = ("step", "warmup_steps", "total_steps", "min_lr_ratio", "base_lrs")
+        missing = [k for k in required if k not in state]
+        if missing:
+            raise ValueError(f"scheduler state is missing required keys {missing}; got keys {sorted(state)}")
+        try:
+            self._step = self._require_int("step", state["step"])
+            self.warmup_steps = self._require_int("warmup_steps", state["warmup_steps"])
+            self.total_steps = self._require_int("total_steps", state["total_steps"])
+            self.min_lr_ratio = self._require_finite_float("min_lr_ratio", state["min_lr_ratio"], lo=0.0, hi=1.0)
+            if self._step < 0 or self.warmup_steps < 0 or self.total_steps < 1:
+                raise ValueError(
+                    f"invalid scheduler state values: step={self._step}, "
+                    f"warmup_steps={self.warmup_steps}, total_steps={self.total_steps}"
+                )
+        except TypeError as exc:
+            raise ValueError(f"scheduler state has invalid field types: {exc}") from exc
+        restored_lrs = self._require_finite_float_list("base_lrs", state["base_lrs"])
         if len(restored_lrs) != len(self.base_lrs):
             raise ValueError(
                 f"scheduler state base_lrs has length {len(restored_lrs)} but this optimizer "
@@ -83,6 +95,38 @@ class WarmupCosineSchedule:
     def _apply(self, lrs: list[float]) -> None:
         for group, lr in zip(self.optimizer.param_groups, lrs):
             group["lr"] = lr
+
+    @staticmethod
+    def _require_int(name: str, value) -> int:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError(f"{name} must be an integer, got {value!r}")
+        ivalue = int(value)
+        if float(ivalue) != float(value):
+            raise TypeError(f"{name} must be an integer, got {value!r}")
+        return ivalue
+
+    @staticmethod
+    def _require_finite_float(name: str, value, *, lo: float, hi: float) -> float:
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise TypeError(f"{name} must be a number, got {value!r}")
+        fvalue = float(value)
+        if not math.isfinite(fvalue) or fvalue < lo or fvalue > hi:
+            raise ValueError(f"{name} must be finite and in [{lo}, {hi}], got {value!r}")
+        return fvalue
+
+    @staticmethod
+    def _require_finite_float_list(name: str, value) -> list[float]:
+        if not isinstance(value, (list, tuple)):
+            raise TypeError(f"{name} must be a list of numbers, got {type(value).__name__}")
+        out: list[float] = []
+        for i, item in enumerate(value):
+            if isinstance(item, bool) or not isinstance(item, (int, float)):
+                raise TypeError(f"{name}[{i}] must be a number, got {item!r}")
+            fvalue = float(item)
+            if not math.isfinite(fvalue):
+                raise ValueError(f"{name}[{i}] must be finite, got {item!r}")
+            out.append(fvalue)
+        return out
 
     def lr_at(self, step: int) -> list[float]:
         if step < self.warmup_steps:

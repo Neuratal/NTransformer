@@ -208,3 +208,66 @@ def test_sharded_total_size_integrity_check(tmp_path):
     index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
     with pytest.raises(ValueError, match="byte count mismatch"):
         load_pretrained_sharded(tmp_path / "ckpt")
+
+
+def test_sharded_save_records_and_verifies_hashes(tmp_path):
+    import hashlib as _hashlib
+
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    index_path = ckpt / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    hashes = index["metadata"]["shard_hashes"]
+    assert hashes and len(hashes) == index["metadata"]["num_shards"]
+    for name, want in hashes.items():
+        got = _hashlib.sha256((ckpt / name).read_bytes()).hexdigest()
+        assert got == want
+    load_pretrained_sharded(ckpt)  # verifies by default
+
+
+def test_sharded_tampered_shard_rejected(tmp_path):
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    shard = sorted((ckpt).glob("model-*.safetensors"))[-1]
+    data = bytearray(shard.read_bytes())
+    data[-1] ^= 0x01  # last weight byte — safetensors cannot detect this; hashes can
+    shard.write_bytes(bytes(data))
+    with pytest.raises(ValueError, match="SHA-256"):
+        load_pretrained_sharded(ckpt)
+    # opt-out exists for verified-out-of-band contexts (e.g. enormous checkpoints)
+    load_pretrained_sharded(ckpt, verify_shard_hashes=False)  # loads (weights wrong — documented)
+
+
+def test_sharded_missing_hash_entry_rejected(tmp_path):
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    index_path = ckpt / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    first_key = next(iter(index["metadata"]["shard_hashes"]))
+    del index["metadata"]["shard_hashes"][first_key]
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
+    with pytest.raises(ValueError, match="shard_hashes"):
+        load_pretrained_sharded(ckpt)
+
+
+def test_sharded_legacy_index_without_hashes_loads(tmp_path):
+    """Indexes written before shard hashes existed still load (total_size check only)."""
+    from neuratal.serialization.sharded import load_pretrained_sharded, save_pretrained_sharded
+
+    model = make_model()
+    ckpt = tmp_path / "ckpt"
+    save_pretrained_sharded(model, ckpt, max_shard_bytes=1024 * 40)
+    index_path = ckpt / "model.safetensors.index.json"
+    index = json.loads(index_path.read_text())
+    del index["metadata"]["shard_hashes"]
+    index_path.write_text(json.dumps(index, indent=2, sort_keys=True))
+    load_pretrained_sharded(ckpt)  # must not raise just because hashes are absent

@@ -32,6 +32,15 @@ TRAINER_META_FILE = "trainer_meta.json"
 CHECKPOINT_FORMAT_VERSION = 1
 
 
+def _scalar_to_tensor(v) -> torch.Tensor:
+    # ints are stored exactly; floats are stored as float64 so a save/load
+    # round-trip is bit-exact (float32 storage silently rounded scheduler
+    # base LRs and would drift every resumed LR trajectory by ~1e-7).
+    if isinstance(v, bool) or isinstance(v, int):
+        return torch.tensor([int(v)], dtype=torch.long)
+    return torch.tensor([float(v)], dtype=torch.float64)
+
+
 def save_training_checkpoint(
     model,
     optimizer,
@@ -62,16 +71,16 @@ def save_training_checkpoint(
                 if torch.is_tensor(v):
                     state[f"optimizer.{i}.{j}.{k}"] = v.detach().cpu().contiguous()
                 else:
-                    state[f"optimizer.{i}.{j}.{k}"] = torch.tensor(v, dtype=torch.float32)
+                    state[f"optimizer.{i}.{j}.{k}"] = _scalar_to_tensor(v)
     if scheduler is not None and hasattr(scheduler, "state_dict"):
         for k, v in scheduler.state_dict().items():
             if isinstance(v, (list, tuple)):
                 state[f"scheduler.{k}.__len__"] = torch.tensor([len(v)], dtype=torch.long)
                 for j, x in enumerate(v):
-                    if isinstance(x, (int, float)):
-                        state[f"scheduler.{k}.{j}"] = torch.tensor(float(x))
-            elif isinstance(v, (int, float)):
-                state[f"scheduler.{k}"] = torch.tensor(float(v))
+                    if isinstance(x, (int, float)) and not isinstance(x, bool):
+                        state[f"scheduler.{k}.{j}"] = _scalar_to_tensor(x)
+            elif isinstance(v, (int, float)) and not isinstance(v, bool):
+                state[f"scheduler.{k}"] = _scalar_to_tensor(v)
     state["trainer.global_step"] = torch.tensor([int(global_step)])
     state["trainer.epoch"] = torch.tensor([int(epoch)])
     state["trainer.tokens_seen"] = torch.tensor([int(tokens_seen)])

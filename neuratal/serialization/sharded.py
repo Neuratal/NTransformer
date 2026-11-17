@@ -26,6 +26,7 @@ format to build distributed sharding on top of later.
 
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 from typing import Optional, Union
@@ -96,11 +97,14 @@ def save_pretrained_sharded(
     shards = plan_shards(state_dict, max_shard_bytes=max_shard_bytes)
     count = len(shards)
     weight_map: dict[str, str] = {}
+    shard_hashes: dict[str, str] = {}
     for idx, shard in enumerate(shards, start=1):
         filename = f"model-{idx:05d}-of-{count:05d}.safetensors"
         for name in shard:
             weight_map[name] = filename
-        _atomic_save_safetensors(shard, output_dir / filename)
+        path = output_dir / filename
+        _atomic_save_safetensors(shard, path)
+        shard_hashes[filename] = _sha256(path)
 
     total_size = sum(t.numel() * t.element_size() for t in state_dict.values())
     index = {
@@ -109,6 +113,7 @@ def save_pretrained_sharded(
             "architectures": [ARCHITECTURE_NAME],
             "total_size": total_size,
             "num_shards": count,
+            "shard_hashes": shard_hashes,
         },
         "weight_map": weight_map,
     }
@@ -121,6 +126,8 @@ def save_pretrained_sharded(
 def load_pretrained_sharded(
     checkpoint_dir: Union[str, Path],
     map_location: Optional[Union[str, torch.device]] = None,
+    *,
+    verify_shard_hashes: bool = True,
 ) -> NeuratalModel:
     checkpoint_dir = Path(checkpoint_dir)
     if not checkpoint_dir.is_dir():
@@ -152,6 +159,24 @@ def load_pretrained_sharded(
     shard_files = sorted(set(weight_map.values()))
     if not shard_files:
         raise ValueError(f"{INDEX_FILENAME} has an empty weight_map")
+    shard_hashes = metadata.get("shard_hashes")
+    if shard_hashes is not None and not isinstance(shard_hashes, dict):
+        raise ValueError(f"{INDEX_FILENAME} metadata.shard_hashes must be an object")
+    recorded_hashes = {str(k): str(v) for k, v in (shard_hashes or {}).items()}
+    if verify_shard_hashes and recorded_hashes:
+        for filename in shard_files:
+            shard_path = checkpoint_dir / filename
+            if not shard_path.is_file():
+                raise ValueError(f"missing shard {filename} referenced by {INDEX_FILENAME}")
+            want = recorded_hashes.get(filename)
+            if want is None:
+                raise ValueError(f"{INDEX_FILENAME} shard_hashes is missing an entry for {filename!r}")
+            got = _sha256(shard_path)
+            if got != want:
+                raise ValueError(
+                    f"shard {filename} failed SHA-256 verification: metadata records "
+                    f"{want}, file hashes to {got} (the shard was modified or replaced)"
+                )
     state_dict: dict[str, torch.Tensor] = {}
     for filename in shard_files:
         shard_path = checkpoint_dir / filename
@@ -212,3 +237,14 @@ def load_pretrained_sharded(
         )
     model.load_state_dict(state_dict, strict=True)
     return model
+
+
+def _sha256(path: Union[str, Path], chunk: int = 1 << 20) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        while True:
+            block = handle.read(chunk)
+            if not block:
+                break
+            digest.update(block)
+    return digest.hexdigest()
