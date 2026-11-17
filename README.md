@@ -272,7 +272,8 @@ Benchmark suites: `benchmark_environment`, `benchmark_tokenizer`,
 ## Testing
 
 ```bash
-python -m pytest tests/ -q          # full suite: 418 passed, 3 skipped, 1 warning
+python -m pytest tests/ -q          # full suite: 422 passed, 3 skipped, 1 warning
+python -m pytest tests/ --basetemp=/path/on/a/large/filesystem/tmp   # if /tmp is a small tmpfs
 python -m pytest tests/ -k cuda     # CUDA-only subset
 ```
 

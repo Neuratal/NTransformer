@@ -111,3 +111,23 @@ Not run / not claimed explicitly:
 by the core. The integration example and the checkpoint sidecar both carry
 the artifact's actual ids (eos 262138, pad 262139, bos 262137), read from the
 manifest at runtime — never hardcoded in the model.
+
+## Integration-test environment caveat (v1.3.0-candidate audit)
+
+`tests/test_ntokenizer_integration.py` locates the artifact via
+`NTOKENIZER_ROOT` (default: a machine-relative sibling `../NTokenizer`).
+In a moved or detached checkout those tests **skip** with an explicit reason
+(never silently pass), e.g. 40+ skips in `/tmp` worktrees vs **3 skips** in the
+canonical layout. If the artifact is genuinely absent, the count differs —
+that is expected, and the canonical layout is the one with 3 skips.
+Set `NTOKENIZER_ROOT=/path/to/NTokenizer` to run the integration suite
+anywhere.
+
+## Flakiness note: disk quota (2026-11-17)
+
+Two transient failures in repeated suite runs were traced to `/tmp` being a
+small tmpfs (7.4 GB): the 75M dense-chain test writes ~1.1 GB of checkpoint
+data and pytest keeps the last three numbered temp dirs. The tests are not
+broken; with `--basetemp=<dir on a large filesystem>` the full suite passes
+repeatedly. No code change was required; the guidance above is now part of
+the README test section.
