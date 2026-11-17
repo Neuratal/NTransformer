@@ -216,3 +216,19 @@ run where applicable, before/after in the same benchmark script.
   recomputes logits); allocates 1.29 GB vs 2.24/4.29 GB — the entire point of
   the path at V=262144. No change made; workspace is now charged at fp32
   width in the estimator (was 2 bytes), which is what the kernel actually uses.
+
+## v1.2.0-candidate — ultimate audit pass
+- RMSNorm under autocast (dominant fp32-master-weight + bf16-autocast training
+  path): fused weighted kernel cannot dispatch (dtype mismatch); composite
+  fallback measured worse-numerics (0.0156 max err). FIX: fused normalize-
+  without-weight (F.rms_norm(x, None, eps), fp32 under autocast) + explicit
+  fp32 weight multiply — 0.0627 -> 0.0379 ms/op (1.65x), max|d| = 0.0 common
+  case, <=1 ulp worst case. End-to-end train-step within noise (40.01 vs
+  40.53 ms, interleaved medians) — reported as op-level only.
+- Scheduler off-by-ones (B-2022-1/2/3): fresh step 0 at full base LR; resume
+  pushed construction LR into param groups (silent mid-cosine jump);
+  base_lrs length now validated. Fixed; exact-restore tests added.
+- Sharded checkpoints: total_size byte-count integrity check added on load.
+- Re-measurements of bf16 SDPA backends remain clock-noise inconclusive;
+  default retained. benchmark_model re-runs read 5-25% fast purely from SM
+  clock state (2565/3105 MHz) — discarded as evidence.

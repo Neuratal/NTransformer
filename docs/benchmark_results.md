@@ -210,3 +210,14 @@ imports). Full test suite: 400 passed, 3 skipped, 1 warning, ~47 s.
 numbers fluctuate; do not read <10% differences as significant. The RMSNorm
 adoption is supported by the op-level measurement (4x) and is consistent
 with (not solely derived from) the end-to-end numbers.
+
+## 9. v1.2.0-candidate addendum (2026-11-17) — correctness, not speed
+
+Attributable wins this cycle are op-level only (RMSNorm under autocast,
+0.0627 -> 0.0379 ms/op, diff 0.0). Re-runs against v1.1 baselines are
+clock-state dominated (SM 2565/3105 MHz); no end-to-end win is claimed.
+Chunked CE parity re-confirmed (rel L2 = 1.03e-06). Suite: 418 passed.
+The candidate fixes silent correctness defects (LR schedule resume semantics;
+sharded checkpoint integrity) — there is intentionally no "faster" story here.
+Artifacts: model_20261117T074422Z.json (fp32), moe_*.json unchanged semantics,
+environment_20261117T072617Z.json (re-fingerprinted).
