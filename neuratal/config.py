@@ -89,6 +89,10 @@ class NeuratalConfig:
     # --- Runtime / inference ---
     use_cache: bool = True
     cache_capacity: Optional[int] = None  # None => max_position_embeddings
+    # Recompute block activations in backward instead of storing them.
+    # Changes memory profile only, never the math (outputs and gradients are
+    # identical up to floating-point nondeterminism of the recomputed ops).
+    gradient_checkpointing: bool = False
 
     # --- Output head memory controls ---
     fp32_logits: bool = False
@@ -240,6 +244,8 @@ class NeuratalConfig:
         # --- cache ---
         if not isinstance(self.use_cache, bool):
             raise ValueError(f"use_cache must be a bool, got {self.use_cache!r}")
+        if not isinstance(self.gradient_checkpointing, bool):
+            raise ValueError(f"gradient_checkpointing must be a bool, got {self.gradient_checkpointing!r}")
         if self.cache_capacity is None:
             self.cache_capacity = self.max_position_embeddings
         if self.cache_capacity < 1:

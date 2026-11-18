@@ -18,6 +18,7 @@ from typing import Optional
 
 import torch
 from torch import nn
+from torch.utils.checkpoint import checkpoint
 
 from neuratal.config import NeuratalConfig
 from neuratal.model.block import NeuratalBlock
@@ -79,8 +80,15 @@ class NeuratalModel(nn.Module):
         positions = torch.arange(0, seq_len, device=input_ids.device)
         hidden = self.embed_tokens(input_ids)
         stats: list[MoEStats] = []
+        use_ckpt = (self.config.gradient_checkpointing and torch.is_grad_enabled()
+                    and not return_aux and token_mask is None)
         for layer in self.layers:
-            if return_aux:
+            if use_ckpt:
+                hidden = checkpoint(
+                    lambda h, pos, layer=layer: layer(h, pos),
+                    hidden, positions, use_reentrant=False,
+                )
+            elif return_aux:
                 hidden, layer_stats = layer(
                     hidden, positions, past_key_values=None,
                     token_mask=token_mask, return_aux=True,
@@ -126,6 +134,7 @@ class NeuratalModel(nn.Module):
         output_hidden_only: bool = False,
         return_aux: bool = False,
         token_mask: Optional[torch.Tensor] = None,
+        last_position_only: bool = False,
     ):
         """Model forward.
 
@@ -135,7 +144,19 @@ class NeuratalModel(nn.Module):
         through ``DistributedDataParallel.forward`` (DDP's reducer preparation
         happens there; bypassing it by calling a submodule method directly is a
         real correctness bug for multi-GPU training).
+
+        ``last_position_only=True`` projects **only the final position**
+        through the output head, returning logits of shape ``[batch, 1, vocab]``.
+        This is the autoregressive-decode fast path: sampling needs only the
+        last position's logits, so the full ``[batch, seq, vocab]`` tensor is
+        never materialized (at 16K x 262144 vocabulary the full tensor is
+        ~8 GiB in bf16). Math is identical for the final position; earlier
+        positions are not projected. Incompatible with ``output_hidden_only``.
         """
+        if last_position_only and output_hidden_only:
+            raise ValueError("last_position_only=True is incompatible with output_hidden_only=True")
+        if not isinstance(last_position_only, bool):
+            raise ValueError(f"last_position_only must be a bool, got {last_position_only!r}")
         if input_ids.dim() != 2:
             raise ValueError(
                 f"input_ids must be 2-D [batch, sequence], got shape {tuple(input_ids.shape)}"
@@ -169,11 +190,20 @@ class NeuratalModel(nn.Module):
         positions = torch.arange(past_length, past_length + seq_len, device=input_ids.device)
 
         hidden = self.embed_tokens(input_ids)
+        use_ckpt = (self.config.gradient_checkpointing and torch.is_grad_enabled()
+                    and past_key_values is None)
         for layer in self.layers:
-            hidden = layer(hidden, positions, past_key_values=past_key_values)
+            if use_ckpt:
+                hidden = checkpoint(
+                    lambda h, pos, layer=layer: layer(h, pos),
+                    hidden, positions, use_reentrant=False,
+                )
+            else:
+                hidden = layer(hidden, positions, past_key_values=past_key_values)
         hidden = self.final_norm(hidden)
 
-        logits = self.output_projection(hidden, self.embed_tokens.embedding_weight)
+        head_hidden = hidden[:, -1:, :] if last_position_only else hidden
+        logits = self.output_projection(head_hidden, self.embed_tokens.embedding_weight)
         if past_key_values is not None:
             past_key_values.commit(seq_len)
         return CausalLMOutput(

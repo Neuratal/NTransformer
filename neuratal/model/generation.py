@@ -92,9 +92,10 @@ def generate(
         for step in range(max_new_tokens):
             if cache is not None:
                 step_ids = generated if step == 0 else generated[:, -1:]
-                out = model(step_ids, past_key_values=cache)
+                out = model(step_ids, past_key_values=cache, last_position_only=True)
             else:
-                out = model(generated)
+                # No cache: project only the final position — sampling never needs more.
+                out = model(generated, last_position_only=True)
             next_logits = out.logits[:, -1, :].float()  # fp32 for stable sampling/argmax
 
             next_tokens = _select_next(
