@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Grouped-Query Attention (GQA) with causal masking.
 
 Correctness rules enforced here (see docs/architecture_audit.md §5.2)

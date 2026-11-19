@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Distributed smoke test: single-process gloo DDP init + train step via engine utilities."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Token embeddings — factorized, tied design (NTokenizer-compatible).
 
 Structure (V1, mandatory):

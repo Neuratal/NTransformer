@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Dataset protocol for tokenized, packed sequences.
 
 Does NOT download or read any real corpus by itself. Synthetic corpus

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Memory & scalability analysis -> results/memory_results_<ts>.json
 
 Hard rules: never OOM on purpose; every cell estimates cost first, checks free

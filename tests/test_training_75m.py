@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """75M dense training-chain validation on the project's 8 GB GPU.
 
 Synthetic data only. This is a plumbing/optimizer validation, not pretraining.

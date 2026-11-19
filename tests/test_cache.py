@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """KVCache: lazy init, views, overflow, reset, batch isolation, commit protocol."""
 
 from __future__ import annotations

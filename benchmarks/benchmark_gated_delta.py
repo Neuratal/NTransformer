@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Gated DeltaNet vs dense GQA A/B -> results/gated_delta_results_<ts>.json
 
 Measures the same model shapes with attention_type in {gqa, gated_delta}:

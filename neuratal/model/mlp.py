@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """SwiGLU feed-forward network.
 
     MLP(x) = W_down @ ( SiLU(W_gate @ x) * (W_up @ x) )

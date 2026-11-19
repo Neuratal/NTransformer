@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Memory estimator: formulas produce sane, monotone, documented outputs."""
 
 from __future__ import annotations

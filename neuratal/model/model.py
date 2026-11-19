@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NeuratalModel — decoder-only autoregressive Transformer (pre-norm).
 
 Topology per forward pass:

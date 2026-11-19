@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """End-to-end pipeline benchmark -> results/end_to_end_results_<ts>.json
 
 Measures: encode -> model prefill -> KV-cached generation -> decode, with

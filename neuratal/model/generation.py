@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Basic autoregressive generation.
 
 Scope (deliberately small): greedy decoding or temperature/top-k sampling,

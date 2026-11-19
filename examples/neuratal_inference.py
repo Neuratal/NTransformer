@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Neuratal end-to-end integration example: text → model → text.
 
 Technical integration demonstration for the *untrained* development preset —

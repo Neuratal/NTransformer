@@ -1,0 +1,30 @@
+NTransformer (Neuratal Transformer)
+Copyright © 2026 Neuratal Transformer Contributors
+
+This product includes and builds upon open source software components under
+Apache License 2.0 and other permissive licenses:
+
+- Apache License 2.0
+    https://www.apache.org/licenses/LICENSE-2.0
+    (this project is distributed under Apache License 2.0 — see LICENSE)
+
+- PyTorch — https://github.com/pytorch/pytorch (BSD-3-Clause)
+- safetensors — https://github.com/huggingface/safetensors (Apache-2.0)
+- NumPy — https://github.com/numpy/numpy (BSD-3-Clause)
+- pytest — https://github.com/pytest-dev/pytest (MIT)
+- Triton — https://github.com/triton-lang/triton (MIT)
+
+NTOKENIZER IS A SEPARATE PROJECT
+-------------------------------
+
+NTransformer expects token IDs produced by Neuratal NTokenizer v0.3-polished.
+NTokenizer is an independent project with its own identity, license
+(CC-BY-SA-4.0) and release cadence:
+
+  https://github.com/Neuratal/neuratal-tokenizer
+
+NTokenizer is not modified by this package, and changing this project's
+license does not change NTokenizer's license.
+
+NO SEPARATE PATENT GRANT IS MADE BEYOND THE TERMS OF APACHE LICENSE 2.0
+AND APPLIED LAW.

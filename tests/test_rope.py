@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """RoPE: frequency math, layout, partial rotary, position handling, dtype behavior."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Tokenizer artifact manifests — exact identity for a NTokenizer .ntok file.
 
 A manifest (schema ``neuratal-tokenizer-manifest/1``) binds a checkpoint or

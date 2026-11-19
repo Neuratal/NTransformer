@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Static-shape CUDA-graph decode benchmark -> results/graph_decode_results_<ts>.json
 
 Compares eager decode vs the opt-in experimental CUDA-graph decode on identical

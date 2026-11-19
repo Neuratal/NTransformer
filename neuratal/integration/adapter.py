@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NTokenizer ↔ NeuratalTransformer adapter.
 
 Optional, thin integration layer. Core (`neuratal.model`) never imports this.

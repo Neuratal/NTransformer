@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Training engine smoke tests — no optimizer steps, no real training."""
 
 from __future__ import annotations

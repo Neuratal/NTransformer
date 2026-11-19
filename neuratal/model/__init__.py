@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 from neuratal.model.attention import GQAAttention, reference_attention
 from neuratal.model.gated_delta_net import DeltaNetCache, GatedDeltaNetAttention
 from neuratal.model.block import NeuratalBlock

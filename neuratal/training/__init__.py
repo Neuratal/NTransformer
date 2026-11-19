@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Neuratal training engine — data, optimization, scheduling, state management.
 
 Scope: engine is independent of model family and provides:

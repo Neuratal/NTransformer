@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Measured performance checks for the development preset.
 
 Not a production benchmark; it exists so the engineering report can quote

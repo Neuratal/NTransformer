@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """SwiGLU MLP: exact math, shapes, gradients."""
 
 from __future__ import annotations

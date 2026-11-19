@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NeuratalBlock — pre-norm Transformer block (attention + SwiGLU MLP).
 
     h = h + hidden_dropout( Attn( RMSNorm(h) ) )

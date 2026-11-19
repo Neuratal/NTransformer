@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Configuration validation: every rule raises a precise error; nothing is silently fixed."""
 
 from __future__ import annotations

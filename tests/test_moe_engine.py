@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """MoE training-engine integration: losses, metrics, gradients, checkpoints, BF16."""
 
 from __future__ import annotations

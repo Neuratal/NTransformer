@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Measure chunked-vs-standard CE memory on the 75M preset — PUBLISHED EVIDENCE.
 
 Forward+backward only; NO optimizer step. Synthetic random ids.

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 from neuratal.serialization.checkpoint import load_pretrained, save_pretrained
 from neuratal.serialization.sharded import (
     load_pretrained_sharded,

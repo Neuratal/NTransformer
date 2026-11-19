@@ -1,0 +1,20 @@
+cff-version: 1.2.0
+message: "If you use NTransformer in your research or engineering, please cite it as follows (update the release tag/DOI as applicable)."
+title: "NTransformer (Neuratal Transformer)"
+version: "1.4.0"
+type: software
+authors:
+  - name: Neuratal
+    website: https://neuratal.com
+repository-code: https://github.com/Neuratal/NTransformer
+url: https://github.com/Neuratal/NTransformer
+license: Apache-2.0
+date-released: 2026-11-19
+keywords:
+  - transformer
+  - pytorch
+  - decoder-only language model
+  - grouped-query attention
+  - rope
+  - training
+abstract: "NTransformer is an independently developed, PyTorch-based, decoder-only Transformer architecture and training framework by Neuratal. It implements the model, inference helpers, a training engine and checkpoint machinery with a deliberately minimal dependency surface, NTokenizer v0.3-polished compatibility (vocabulary 262,144, token IDs consumed verbatim), and honest, measurement-first documentation. No pretrained weights are distributed with this release."

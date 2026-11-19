@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """KV cache benchmark -> results/kv_cache_results_<ts>.json
 
 Compares full-sequence uncached inference, cached prefill, single-token cached

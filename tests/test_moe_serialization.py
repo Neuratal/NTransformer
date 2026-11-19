@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """MoE checkpointing: single-file, sharded, dense/MoE mismatch, training resume."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Shared helpers for the Neuratal benchmark suite.
 
 Reproducibility contract

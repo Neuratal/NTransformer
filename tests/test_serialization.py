@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Serialization: roundtrip bitwise equality, tying preservation, failure modes."""
 
 from __future__ import annotations

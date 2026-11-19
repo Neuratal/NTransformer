@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Mixture-of-Experts feed-forward network (opt-in reference implementation).
 
 Design goals

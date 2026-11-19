@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NeuratalModel: forward/backward, tying mechanics, cache equivalence, leakage, vocab integration."""
 
 from __future__ import annotations

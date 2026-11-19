@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Output projection for the 262k-token vocabulary.
 
 Tied design (mandatory in V1): this module owns **no** vocabulary parameter.

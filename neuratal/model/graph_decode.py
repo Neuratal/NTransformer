@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Static-shape CUDA-graph decode session (EXPERIMENTAL, opt-in).
 
 Motivation (measured): eager decode at this scale is launch-bound — ~305 µs

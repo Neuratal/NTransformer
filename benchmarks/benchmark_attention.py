@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """SDPA backend evaluation -> results/attention_results_<ts>.json
 
 Forces each SDPA backend via sdpa_kernel for fp32/bf16/fp16 and records

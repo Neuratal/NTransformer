@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Rotary Position Embeddings (RoPE), GPT-NeoX / LLaMA rotate-half layout.
 
 * Applied to Q and K only, on the first ``rotary_dim`` channels of each head;

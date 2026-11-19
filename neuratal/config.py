@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Configuration system for the Neuratal Transformer.
 
 A single :class:`NeuratalConfig` dataclass drives the whole architecture.

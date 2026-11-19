@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """MoE core: config, router math, dispatch, capacity, padding, dtype, parameters."""
 
 from __future__ import annotations

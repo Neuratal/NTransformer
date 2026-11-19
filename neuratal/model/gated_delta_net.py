@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Gated DeltaNet attention (Kimi-K3 / Qwen3.8-Flash-Next "KDA" lineage) — experimental, opt-in.
 
 Implements the gated delta rule, Eq. 10 of Yang, Kautz & Hatamizadeh,

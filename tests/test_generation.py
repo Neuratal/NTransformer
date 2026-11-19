@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Generation: greedy determinism, sampling, EOS stop, cache/no-cache parity."""
 
 from __future__ import annotations

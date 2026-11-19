@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Regression tests for the v1.4.0-candidate bug remediation.
 
 One or more tests per original finding ID from the independent audit

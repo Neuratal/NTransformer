@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Checkpoint serialization — safetensors + JSON config.
 
 Layout of a checkpoint directory::

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Output projection: tied matrix usage, exact chunked computation, validation."""
 
 from __future__ import annotations

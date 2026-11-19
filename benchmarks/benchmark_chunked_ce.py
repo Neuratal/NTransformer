@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Chunked linear cross-entropy benchmark vs standard cross entropy.
 
 Fair comparison: identical hidden states, labels, weights, dtype, and device;

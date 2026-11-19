@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Canonical model scale presets, parameter counting and validation.
 
 All presets map to real NeuratalConfig values. Parameter counts are computed

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """KV cache — preallocated, per-layer key/value storage for incremental decoding.
 
 Behavior contract

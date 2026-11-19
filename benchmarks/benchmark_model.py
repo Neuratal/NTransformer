@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NTransformer dev-preset inference benchmark -> results/model_results_<ts>.json
 
 Measures prefill latency (full-sequence forward) and tokens/s across sequence

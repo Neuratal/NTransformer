@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Environment fingerprint -> benchmarks/results/environment_<ts>.json
 
 Collects OS/CPU/RAM/GPU/driver/PyTorch/Python/NTokenizer/NTransformer details,

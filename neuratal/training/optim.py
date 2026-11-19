@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Optimizer and LR schedule — pluggable factory.
 
 Built-in: AdamW (default), SGD-momentum. Muon can be added by implementing the

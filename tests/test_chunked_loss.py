@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Chunked cross-entropy: parity with standard CE + memory behavior."""
 
 from __future__ import annotations

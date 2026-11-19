@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Shared fixtures.
 
 Every test uses the full 262,144-token NTokenizer vocabulary (per project

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Presets: every preset builds, counts match, get_preset works, meta-device OK."""
 
 from __future__ import annotations

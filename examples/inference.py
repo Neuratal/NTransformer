@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Minimal end-to-end example: NTokenizer -> NeuratalTransformer generation.
 
 What this shows

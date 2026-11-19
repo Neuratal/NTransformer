@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NTokenizer v0.3 ↔ NeuratalTransformer compatibility suite.
 
 Skipped unless the real NTokenizer v0.3 artifact and Python bindings are

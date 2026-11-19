@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """MoE benchmark: router/dispatch/expert/combine + end-to-end block comparison.
 
 Measures, under identical geometry and dtype:

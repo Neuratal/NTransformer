@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """v0.6-candidate benchmark: GQA vs sequential GDN vs WY-chunkwise GDN.
 
 Identical protocol for all three attention types (seeds 42/43/44):

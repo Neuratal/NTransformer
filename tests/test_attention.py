@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """GQA attention: causality, head mapping, SDPA-vs-reference equivalence, cache regimes."""
 
 from __future__ import annotations

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """NeuratalBlock: shapes, residual identity, dropout placement."""
 
 from __future__ import annotations

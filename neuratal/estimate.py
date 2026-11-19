@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Analytical memory estimator for Neuratal configurations.
 
 All numbers are *estimates from closed-form formulas*, never measurements,

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Chunked cross-entropy for very large vocabularies (262,144 tokens).
 
 Motivation: at 262k vocabulary, materializing [batch*seq, vocab] logits in

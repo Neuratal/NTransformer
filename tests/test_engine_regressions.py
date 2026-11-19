@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Regression tests for engine/checkpoint fixes.
 
 Covers: full-width tied head (embedding_size == hidden_size, out_proj=None),

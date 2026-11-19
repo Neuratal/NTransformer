@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Neuratal Transformer — decoder-only, autoregressive Transformer core.
 
 v1.1.0rc1: architecture, inference components, training engine and full
@@ -44,7 +46,7 @@ def __getattr__(name: str):
 def __dir__() -> list[str]:
     return sorted(set(globals()) | _PRESET_EXPORTS)
 
-__version__ = "1.4.0rc1"
+__version__ = "1.4.0"
 
 __all__ = [
     "NeuratalConfig",

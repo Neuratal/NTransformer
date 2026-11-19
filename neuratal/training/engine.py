@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Training engine — single-GPU and multi-GPU (DDP) training.
 
 Design contract:

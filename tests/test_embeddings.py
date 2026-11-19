@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Neuratal Transformer Contributors
 """Factorized embedding: full NTokenizer vocabulary, tie mechanics, ID validation."""
 
 from __future__ import annotations
