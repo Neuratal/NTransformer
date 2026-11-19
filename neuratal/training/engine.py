@@ -68,6 +68,10 @@ class TrainConfig:
     eval_every_steps: int = 200
     log_every_steps: int = 20
     checkpoint_every_steps: int = 500
+    # wall-clock control for bounded runs (default: unlimited — historical behavior)
+    deadline_unix: Optional[float] = None   # stop starting new optimizer steps after this time
+    progress_log_seconds: float = 0.0       # print a progress line every N seconds (0 = off)
+    save_final_checkpoint: bool = False     # save ckpt-final when the loop exits for ANY reason
     # misc
     seed: int = 1234
     max_steps: int = 10_000
@@ -298,7 +302,14 @@ def train(
 
     iteration_cap = max(total_steps + 1000, 4 * total_steps)
     iterations = 0
+    last_progress_log = time.perf_counter()
     while global_step < total_steps:
+        if cfg.deadline_unix is not None and time.time() > cfg.deadline_unix:
+            print(
+                f"[engine] deadline reached after {time.time() - t0:.0f}s "
+                f"(tokens={tokens_seen}, step={global_step}/{total_steps}); "
+                "stopping before starting a new optimizer step", flush=True)
+            break
         iterations += 1
         if iterations > iteration_cap:
             raise RuntimeError(
@@ -398,6 +409,18 @@ def train(
         scheduler.step()
         global_step += 1
 
+        if is_main and cfg.progress_log_seconds > 0 and (time.perf_counter() - last_progress_log) >= cfg.progress_log_seconds:
+            elapsed = time.perf_counter() - t0
+            rate = tokens_seen / max(elapsed, 1e-9)
+            remaining_tokens = max(0, (total_steps - global_step) * cfg.batch_size
+                                   * cfg.sequence_length * cfg.gradient_accumulation_steps)
+            eta = remaining_tokens / rate if rate > 0 else float("inf")
+            print(
+                f"[progress] {elapsed:.0f}s elapsed | tokens={tokens_seen} | "
+                f"step {global_step}/{total_steps} | tokens/s={rate:.0f} | eta_s={eta:.0f}",
+                flush=True)
+            last_progress_log = time.perf_counter()
+
         if is_main and step % cfg.log_every_steps == 0:
             elapsed = time.perf_counter() - t0
             lr = scheduler.optimizer.param_groups[0]["lr"]
@@ -457,6 +480,14 @@ def train(
                 val_loss = tot / max(cnt, 1)
                 history.append({"step": step, "val_loss": val_loss})
                 print(f"[step {step}] val_loss={val_loss:.4f}")
+
+    if is_main and cfg.save_final_checkpoint:
+        save_training_checkpoint(model, optimizer, scheduler, out_dir / "ckpt-final",
+                                 global_step=global_step, tokens_seen=tokens_seen,
+                                 tokenizer_fingerprint=cfg.tokenizer_fingerprint,
+                                 precision=cfg.precision,
+                                 grad_scaler=scaler if use_scaler else None)
+        print(f"[engine] final checkpoint saved to {out_dir / 'ckpt-final'}", flush=True)
 
     if is_main:
         (out_dir / "history.json").write_text(json.dumps(history, indent=2))
