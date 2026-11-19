@@ -4,6 +4,7 @@
 
 Stable software release.
 
+- Internal audit reports retained at `docs/internal/` for transparency.
 ### Added
 - **Long-context paths** (v1.4): gradient checkpointing for 16K/32K training;
   last-position-only forward pass for bounded memory.

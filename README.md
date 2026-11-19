@@ -1,6 +1,6 @@
 # NTransformer (Neuratal Transformer)
 
-**The independently developed PyTorch decoder-only Transformer architecture and training framework by Neuratal**, designed for experimentation with decoder-only language models, deterministic training, and full NTokenizer v0.3-polished integration.
+**A PyTorch implementation of the standard decoder-only LLaMA-style Transformer (GQA, RoPE, SwiGLU, RMSNorm), plus a training engine, written by Neuratal.** Designed for experimentation with decoder-only language models, deterministic training, and full NTokenizer v0.3-polished integration.
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-%E2%89%A53.10-blue.svg)](https://www.python.org/)
@@ -250,13 +250,21 @@ All tests run CPU-only (CUDA-specific ones skip). Tests cover every model module
 
 ---
 
-## Why Prefer NTransformer
+## Positioning (not a marketing pitch)
 
-- **Full NTokenizer compatibility** (vocab 262,144; IDs consumed verbatim; SHA-256 fingerprint bound checkpoints; no BOS/EOS injection; correct special token map)
-- **One architecture, deeply verified** — GQA + KV cache + RMSNorm + SwiGLU + factorized tied embeddings; 32K-capable long-context path
-- **Complete training engine** with deterministic resume, chunked linear cross-entropy, bf16/fp16, MoE activation switch
-- **Honest releases** — no fabricated benchmarks, no misleading marketing, real test counts
-- **Single-purpose, readable core** — ~70 files, zero hidden dependencies, no tokenizer vendoring
+NTransformer bundles a **modern LLaMA-style architecture** (GQA + KV cache + RoPE + RMSNorm + SwiGLU + factorized tied embeddings) with a training engine and an optional MoE reference implementation. Nothing here is architecturally novel.
+
+**When this is a good fit:**
+- You want a *small, readable reference implementation* of a modern decoder-only stack — for learning, auditing, or extending.
+- You specifically need **full NTokenizer v0.3-polished compatibility** (vocab 262,144; IDs consumed verbatim; SHA-256 fingerprint-verified checkpoints).
+- You are content with a **research/engineering core** — not a production serving stack or a flagship model.
+
+**When it is a poor fit:**
+- You need a **pretrained model** — there is none here; the development preset outputs gibberish.
+- You need **multi-GPU/NCCL throughput** — not verified; CPU-gloo DDP only.
+- You need to plug in an arbitrary tokenizer — NTransformer targets Neuratal's tokenizer (vocab 262,144) only.
+- You need ecosystem features (Hugging Face Trainer, DeepSpeed, FSDP templates, deployment integrations) — use Hugging Face.
+- You want a *novel architecture* — this is not one; it is a solid, honest implementation of the standard recipe.
 
 For the design trade-offs against HF/Megatron-LM/nanoGPT, see [Comparison](docs/comparison.md).
 

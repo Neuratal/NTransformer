@@ -3,7 +3,7 @@
 """Regression tests for the v1.4.0-candidate bug remediation.
 
 One or more tests per original finding ID from the independent audit
-(see BUG_REGISTRY.md and docs/reports in versions/v1.4.0-candidate/).
+(see docs/internal/BUG_REGISTRY.md and versions/v1.4.0-candidate/).
 
 Finding IDs (audit §6–9): BUG-01..BUG-07, STRONG-01..03, POSSIBLE-01..06,
 HIST-01..04 (HIST findings are branch-only and documented, not re-tested here).
