@@ -490,5 +490,6 @@ def train(
         print(f"[engine] final checkpoint saved to {out_dir / 'ckpt-final'}", flush=True)
 
     if is_main:
+        history.append({"step": global_step, "tokens_seen": int(tokens_seen), "final": True})
         (out_dir / "history.json").write_text(json.dumps(history, indent=2))
     return model, history
