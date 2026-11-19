@@ -1,0 +1,436 @@
+{
+  "dtype": "float32",
+  "machine": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-12700H",
+    "cpu_cores": 20,
+    "cuda_available": true,
+    "cuda_runtime": "13.2",
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "gpu_compute_capability": [
+      8,
+      9
+    ],
+    "gpu_free_vram_bytes": 8067350528,
+    "gpu_sm_count": 24,
+    "gpu_total_vram_bytes": 8186822656,
+    "os": "Linux-7.0.0-43-generic-x86_64-with-glibc2.43",
+    "python": "3.14.4",
+    "ram_total_bytes": 15679787008,
+    "seed": 42,
+    "torch": "2.15.0+cu132"
+  },
+  "model_level": [
+    {
+      "batch": 2,
+      "dense_fwdbwd_peak_allocated_bytes": 366535680,
+      "dense_fwdbwd_peak_reserved_bytes": 398458880,
+      "dense_fwdbwd_s": {
+        "max": 0.017864120000012917,
+        "mean": 0.009180750759978764,
+        "median": 0.00869029699993007,
+        "min": 0.006913947999919401,
+        "n": 25,
+        "p95": 0.011454144000026645,
+        "stdev": 0.0021127487124080625
+      },
+      "dense_params": 9782528,
+      "dense_tokens_per_second": 29458.14164948103,
+      "dtype": "float32",
+      "full_forward": false,
+      "moe_active_params_per_token": 10769664,
+      "moe_fwdbwd_peak_allocated_bytes": 366535680,
+      "moe_fwdbwd_peak_reserved_bytes": 404750336,
+      "moe_fwdbwd_s": {
+        "max": 0.024119741999811595,
+        "mean": 0.014776980199994795,
+        "median": 0.014132582999991428,
+        "min": 0.013940474999799335,
+        "n": 25,
+        "p95": 0.01833162999992055,
+        "stdev": 0.002081847855164515
+      },
+      "moe_params": 16667904,
+      "moe_tokens_per_second": 18114.169221589236,
+      "name": "dev-tiny-e8k2",
+      "seq": 128
+    },
+    {
+      "batch": 2,
+      "dense_fwdbwd_peak_allocated_bytes": 369556480,
+      "dense_fwdbwd_peak_reserved_bytes": 417333248,
+      "dense_fwdbwd_s": {
+        "max": 0.005690198999900531,
+        "mean": 0.005489836599954287,
+        "median": 0.005476518000023134,
+        "min": 0.005382220000001325,
+        "n": 25,
+        "p95": 0.0055982839999160205,
+        "stdev": 7.31068855624425e-05
+      },
+      "dense_params": 9782528,
+      "dense_tokens_per_second": 186980.12130986777,
+      "dtype": "float32",
+      "full_forward": false,
+      "moe_active_params_per_token": 10769664,
+      "moe_fwdbwd_peak_allocated_bytes": 374797312,
+      "moe_fwdbwd_peak_reserved_bytes": 440401920,
+      "moe_fwdbwd_s": {
+        "max": 0.039504229000158375,
+        "mean": 0.024183871200002614,
+        "median": 0.023629875999858996,
+        "min": 0.014565625999921394,
+        "n": 25,
+        "p95": 0.03276326199988944,
+        "stdev": 0.005906059036140675
+      },
+      "moe_params": 16667904,
+      "moe_tokens_per_second": 43334.97137293951,
+      "name": "dev-tiny-e8k2",
+      "seq": 512
+    },
+    {
+      "batch": 4,
+      "dense_fwdbwd_peak_allocated_bytes": 366711808,
+      "dense_fwdbwd_peak_reserved_bytes": 404750336,
+      "dense_fwdbwd_s": {
+        "max": 0.01604440300002352,
+        "mean": 0.010344054759980282,
+        "median": 0.00973410899996452,
+        "min": 0.005596234999984517,
+        "n": 25,
+        "p95": 0.014244814999983646,
+        "stdev": 0.002245604678675329
+      },
+      "dense_params": 9782528,
+      "dense_tokens_per_second": 52598.54805425604,
+      "dtype": "float32",
+      "full_forward": false,
+      "moe_active_params_per_token": 10769664,
+      "moe_fwdbwd_peak_allocated_bytes": 366711808,
+      "moe_fwdbwd_peak_reserved_bytes": 419430400,
+      "moe_fwdbwd_s": {
+        "max": 0.032779425999933665,
+        "mean": 0.027590983159989264,
+        "median": 0.027827061999914804,
+        "min": 0.02300325100009104,
+        "n": 25,
+        "p95": 0.031269186999907106,
+        "stdev": 0.0022651895137426412
+      },
+      "moe_params": 16667904,
+      "moe_tokens_per_second": 18399.355275147896,
+      "name": "dev-tiny-e8k2",
+      "seq": 128
+    },
+    {
+      "batch": 4,
+      "dense_fwdbwd_peak_allocated_bytes": 399912448,
+      "dense_fwdbwd_peak_reserved_bytes": 427819008,
+      "dense_fwdbwd_s": {
+        "max": 0.014353232000075877,
+        "mean": 0.010077683279996563,
+        "median": 0.009954493000122966,
+        "min": 0.007975858000008884,
+        "n": 25,
+        "p95": 0.011905044000059206,
+        "stdev": 0.0014573315717600096
+      },
+      "dense_params": 9782528,
+      "dense_tokens_per_second": 205736.24392268911,
+      "dtype": "float32",
+      "full_forward": false,
+      "moe_active_params_per_token": 10769664,
+      "moe_fwdbwd_peak_allocated_bytes": 420112896,
+      "moe_fwdbwd_peak_reserved_bytes": 455081984,
+      "moe_fwdbwd_s": {
+        "max": 0.037710321000076874,
+        "mean": 0.0277974709999944,
+        "median": 0.02678437299982761,
+        "min": 0.022636188999968,
+        "n": 25,
+        "p95": 0.03066985000009481,
+        "stdev": 0.00305046820355173
+      },
+      "moe_params": 16667904,
+      "moe_tokens_per_second": 76462.4955011335,
+      "name": "dev-tiny-e8k2",
+      "seq": 512
+    }
+  ],
+  "module_level": [
+    {
+      "batch": 2,
+      "dense_fwd_s": {
+        "max": 0.00027488999990055163,
+        "mean": 0.0002472975200089422,
+        "median": 0.0002442669999709324,
+        "min": 0.0002422049999495357,
+        "n": 25,
+        "p95": 0.0002644910000526579,
+        "stdev": 7.54729809298553e-06
+      },
+      "dense_fwdbwd_peak_allocated_bytes": 169771008,
+      "dense_fwdbwd_peak_reserved_bytes": 192937984,
+      "dense_fwdbwd_s": {
+        "max": 0.000976368999999977,
+        "mean": 0.0008695320799870387,
+        "median": 0.0008844470000894944,
+        "min": 0.0006678550000742689,
+        "n": 25,
+        "p95": 0.0009636549998504051,
+        "stdev": 8.461026317695289e-05
+      },
+      "dtype": "float32",
+      "hidden": 512,
+      "moe_active_experts": 8,
+      "moe_assignments_per_expert": [
+        71,
+        63,
+        55,
+        56,
+        58,
+        57,
+        76,
+        76
+      ],
+      "moe_fwd_s": {
+        "max": 0.0018049150000933878,
+        "mean": 0.0016455799199957255,
+        "median": 0.0016317619999881572,
+        "min": 0.0015969500000210246,
+        "n": 25,
+        "p95": 0.0017245490000732389,
+        "stdev": 4.761062349913753e-05
+      },
+      "moe_fwdbwd_aux_s": {
+        "max": 0.005171423999854596,
+        "mean": 0.004969770839998091,
+        "median": 0.004974104999973861,
+        "min": 0.004876189000015074,
+        "n": 25,
+        "p95": 0.005091353000125309,
+        "stdev": 6.443326293410889e-05
+      },
+      "moe_fwdbwd_peak_allocated_bytes": 169418240,
+      "moe_fwdbwd_peak_reserved_bytes": 209715200,
+      "moe_fwdbwd_s": {
+        "max": 0.011362783999857129,
+        "mean": 0.00657923411999036,
+        "median": 0.005940247000125964,
+        "min": 0.0044536959999277315,
+        "n": 25,
+        "p95": 0.010820452999951158,
+        "stdev": 0.002239021948309063
+      },
+      "moe_load_imbalance_max_over_mean": 1.1875,
+      "seq": 128,
+      "tokens": 256
+    },
+    {
+      "batch": 2,
+      "dense_fwd_s": {
+        "max": 0.0008098969999537076,
+        "mean": 0.0007977976399979525,
+        "median": 0.000797188999968057,
+        "min": 0.0007943219998196582,
+        "n": 25,
+        "p95": 0.0008022189999792317,
+        "stdev": 3.011941835280586e-06
+      },
+      "dense_fwdbwd_peak_allocated_bytes": 195723264,
+      "dense_fwdbwd_peak_reserved_bytes": 234881024,
+      "dense_fwdbwd_s": {
+        "max": 0.0025169490002099337,
+        "mean": 0.0024930106400370276,
+        "median": 0.0024936580000485264,
+        "min": 0.002431938999961858,
+        "n": 25,
+        "p95": 0.0025023110001711757,
+        "stdev": 1.3857822678280308e-05
+      },
+      "dtype": "float32",
+      "hidden": 512,
+      "moe_active_experts": 8,
+      "moe_assignments_per_expert": [
+        225,
+        262,
+        289,
+        258,
+        228,
+        227,
+        295,
+        264
+      ],
+      "moe_fwd_s": {
+        "max": 0.0036035070002071734,
+        "mean": 0.0034385000799920817,
+        "median": 0.0034208970000690897,
+        "min": 0.0033541509999395203,
+        "n": 25,
+        "p95": 0.003567728999996689,
+        "stdev": 7.640711002422705e-05
+      },
+      "moe_fwdbwd_aux_s": {
+        "max": 0.009472169999980906,
+        "mean": 0.009121087599996826,
+        "median": 0.009076195000034204,
+        "min": 0.00885397499996543,
+        "n": 25,
+        "p95": 0.009444856000072832,
+        "stdev": 0.00016139016084583041
+      },
+      "moe_fwdbwd_peak_allocated_bytes": 185705984,
+      "moe_fwdbwd_peak_reserved_bytes": 220200960,
+      "moe_fwdbwd_s": {
+        "max": 0.00887770500003171,
+        "mean": 0.00870532647998516,
+        "median": 0.008675256000060472,
+        "min": 0.008604296999919825,
+        "n": 25,
+        "p95": 0.00886867400004121,
+        "stdev": 8.849805298910417e-05
+      },
+      "moe_load_imbalance_max_over_mean": 1.15234375,
+      "seq": 512,
+      "tokens": 1024
+    },
+    {
+      "batch": 4,
+      "dense_fwd_s": {
+        "max": 0.0005024960000810097,
+        "mean": 0.00048434827998789843,
+        "median": 0.0004827550001209602,
+        "min": 0.0004809949998616503,
+        "n": 25,
+        "p95": 0.0004916020000109711,
+        "stdev": 4.496537034495846e-06
+      },
+      "dense_fwdbwd_peak_allocated_bytes": 177111040,
+      "dense_fwdbwd_peak_reserved_bytes": 197132288,
+      "dense_fwdbwd_s": {
+        "max": 0.0017110349999711616,
+        "mean": 0.0016265067600215843,
+        "median": 0.0016324140001415799,
+        "min": 0.0014498329999241832,
+        "n": 25,
+        "p95": 0.0016859280001426669,
+        "stdev": 5.4481950543707163e-05
+      },
+      "dtype": "float32",
+      "hidden": 512,
+      "moe_active_experts": 8,
+      "moe_assignments_per_expert": [
+        130,
+        124,
+        106,
+        136,
+        125,
+        131,
+        133,
+        139
+      ],
+      "moe_fwd_s": {
+        "max": 0.0022550499998033047,
+        "mean": 0.002123249999967811,
+        "median": 0.0021199020000040036,
+        "min": 0.0020309569999881205,
+        "n": 25,
+        "p95": 0.002249952999818561,
+        "stdev": 6.077204929451077e-05
+      },
+      "moe_fwdbwd_aux_s": {
+        "max": 0.00549398599991946,
+        "mean": 0.00535268563997306,
+        "median": 0.0053394789999856584,
+        "min": 0.005284919999894555,
+        "n": 25,
+        "p95": 0.005425579000075231,
+        "stdev": 5.06218536634936e-05
+      },
+      "moe_fwdbwd_peak_allocated_bytes": 174425088,
+      "moe_fwdbwd_peak_reserved_bytes": 211812352,
+      "moe_fwdbwd_s": {
+        "max": 0.005115250000017113,
+        "mean": 0.005002979400023833,
+        "median": 0.005003310000120109,
+        "min": 0.0049065260000134,
+        "n": 25,
+        "p95": 0.0051083389998893836,
+        "stdev": 6.403953486872435e-05
+      },
+      "moe_load_imbalance_max_over_mean": 1.0859375,
+      "seq": 128,
+      "tokens": 512
+    },
+    {
+      "batch": 4,
+      "dense_fwd_s": {
+        "max": 0.0018039949998183147,
+        "mean": 0.001694465559994569,
+        "median": 0.0016737830001147813,
+        "min": 0.001644161999820426,
+        "n": 25,
+        "p95": 0.0017803929999899992,
+        "stdev": 4.792481862219297e-05
+      },
+      "dense_fwdbwd_peak_allocated_bytes": 235962368,
+      "dense_fwdbwd_peak_reserved_bytes": 276824064,
+      "dense_fwdbwd_s": {
+        "max": 0.006613072000163811,
+        "mean": 0.006241589680039397,
+        "median": 0.006406540999932986,
+        "min": 0.005092838999871674,
+        "n": 25,
+        "p95": 0.006607794000046852,
+        "stdev": 0.00048545221322911794
+      },
+      "dtype": "float32",
+      "hidden": 512,
+      "moe_active_experts": 8,
+      "moe_assignments_per_expert": [
+        495,
+        511,
+        505,
+        550,
+        479,
+        491,
+        539,
+        526
+      ],
+      "moe_fwd_s": {
+        "max": 0.005531057000098372,
+        "mean": 0.005421766760027822,
+        "median": 0.005437493000044924,
+        "min": 0.005254682999975557,
+        "n": 25,
+        "p95": 0.005506585000148334,
+        "stdev": 6.89048400115774e-05
+      },
+      "moe_fwdbwd_aux_s": {
+        "max": 0.0181227199998375,
+        "mean": 0.01638301144002071,
+        "median": 0.016277995000109513,
+        "min": 0.015671403000169448,
+        "n": 25,
+        "p95": 0.017720318999863593,
+        "stdev": 0.0005828002687751421
+      },
+      "moe_fwdbwd_peak_allocated_bytes": 239526912,
+      "moe_fwdbwd_peak_reserved_bytes": 264241152,
+      "moe_fwdbwd_s": {
+        "max": 0.016390133999948375,
+        "mean": 0.015892197280008985,
+        "median": 0.015861970000059955,
+        "min": 0.015336897999986832,
+        "n": 25,
+        "p95": 0.016314061000002766,
+        "stdev": 0.00025645914530639176
+      },
+      "moe_load_imbalance_max_over_mean": 1.07421875,
+      "seq": 512,
+      "tokens": 2048
+    }
+  ],
+  "run_id": "20261117T065703Z",
+  "saved_at_utc": "2026-11-17T06:57:12.660864+00:00"
+}

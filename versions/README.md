@@ -23,3 +23,5 @@ Each snapshot contains SOURCE (frozen copy), commit.txt, environment.json,
 test_results.txt, file_manifest.json (SHA-256), CHANGELOG.md, LIMITATIONS.md,
 benchmark_results/. Decisions live in `registry/best_version.json` and the
 per-version CHANGELOG.
+
+| v1.4.0 | `ee7ea0e` | First public release; Apache-2.0, docs complete, 16K/32K long context | public release |

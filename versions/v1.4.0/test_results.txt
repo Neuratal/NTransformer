@@ -1,0 +1,22 @@
+..................................................s..................... [ 15%]
+..........................................s............................. [ 31%]
+........................................................................ [ 46%]
+........................................................................ [ 62%]
+................................................................s....... [ 77%]
+........................................................................ [ 93%]
+...............................                                          [100%]
+=============================== warnings summary ===============================
+tests/test_engine_regressions.py::test_resume_then_continue_updates_step_counter
+  /home/justerdem14/Masaüstü/Team N/NTransformer/tests/test_engine_regressions.py:213: UserWarning: resume schedule/loop bound mismatch: max_steps/cfg.max_steps=5 but the checkpoint restores scheduler total_steps=8; the checkpointed LR schedule wins
+    trained, history = train(model2, ds, None, tc, resume_from=str(tmp_path / "ckpt"))
+
+tests/test_gated_delta_net.py::TestForward::test_backward_pass[cuda]
+  /home/justerdem14/Masaüstü/Team N/NTransformer/.venv/lib/python3.14/site-packages/triton/knobs.py:504: UserWarning: TRITON_DEFAULT_FP_FUSION is unset: defaulting to FP fusion ENABLED for backward compatibility in Triton 3.9. The default will change to DISABLED in Triton 3.10; set TRITON_DEFAULT_FP_FUSION=1 to keep fusion enabled or =0 to adopt the new default early and silence this warning.
+    warn_once(FP_FUSION_DEFAULT_WARNING)
+
+tests/test_moe_engine.py::TestMoETraining::test_resume_from_checkpoint_restores_counters
+  /home/justerdem14/Masaüstü/Team N/NTransformer/tests/test_moe_engine.py:118: UserWarning: resume schedule/loop bound mismatch: max_steps/cfg.max_steps=3 but the checkpoint restores scheduler total_steps=2; the checkpointed LR schedule wins; training 1 extra step(s) will run at the min_lr floor
+    _, history = train(model2, train_ds, None, tc, resume_from=str(ckpt))
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+460 passed, 3 skipped, 3 warnings in 42.84s

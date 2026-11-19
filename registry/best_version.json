@@ -248,6 +248,13 @@
         "sharded index unauthenticated by design (STRONG-03)",
         "no crash-consistency fault injection"
       ]
+    },
+    {
+      "name": "v1.4.0",
+      "commit": "ee7ea0ee7bf026a5981805603244ba4f6e25b21d",
+      "note": "Neuratal Transformer 1.4.0: public stable software release. Apache-2.0, tests green (460 passed, 3 skipped), docs complete, NTokenizer-fingerprint-verified checkpoints, 16K/32K long-context paths, deterministic resume, CPU gloo DDP verified, no weights.",
+      "test_summary": "460 passed, 3 skipped, 3 warnings in 42.84s",
+      "promoted": false
     }
   ]
 }
